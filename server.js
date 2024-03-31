@@ -14,7 +14,7 @@ app.use("/auth", require("./routes/auth"));
 app.use("/books", require("./routes/products"));
 app.use("/admin", require("./routes/admin"));
 app.get("/", (req, res) => {
-  res.json({ dev: "Jaya Surya" });
+  res.json({ server: "Books Server" });
 });
 
 app.listen(process.env.PORT || 3000);
