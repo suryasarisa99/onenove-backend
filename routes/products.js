@@ -8,6 +8,7 @@ const products = [
   { id: "3", name: "Book 3", price: 2000 },
   { id: "1", name: "Book 1", price: 5000 },
   { id: "2", name: "Book 2", price: 10000 },
+  { id: "5", name: "Book 5", price: 20000 },
 ];
 
 function authenticateToken(req, res, next) {
@@ -80,10 +81,11 @@ router.get("/buy/:id", authenticateToken, async (req, res) => {
 
   // admin
   const admin = await User.findById("admin");
-  admin.balance += product.price - parentUsers.length * product.price * 0.2;
+  adminBalance = product.price - parentUsers.length * product.price * 0.2;
+  admin.balance += adminBalance;
   admin.transactions.push({
     transaction_type: "Referal Bonus",
-    amount: product.price * 0.1,
+    amount: adminBalance,
     onProduct: product.id,
     fromUser: user._id,
     referal_level: parentUsers.length + 1,
