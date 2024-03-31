@@ -90,7 +90,11 @@ router.post("/login", async (req, res) => {
   if (!number || !password)
     return res.status(400).json({ error: "All fields are required" });
 
-  const user = await User.findOne({ number, password }, { password: 0 });
+  // const user = await User.findOne({ number, password }, { password: 0 });
+  const user = await User.findOne({ number, password })
+    .populate("transactions.fromUser", "name email number")
+    .populate("directChild", "name number email balance");
+
   console.log(user);
   if (!user) return res.status(400).json({ error: "Invalid credentials" });
 

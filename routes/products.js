@@ -47,7 +47,8 @@ router.get("/buy/:id", authenticateToken, async (req, res) => {
 
   if (!user) return res.status(404).json({ error: "User not found" });
   if (!product) return res.status(404).json({ error: "Product not found" });
-
+  if (user.name === "admin")
+    return res.status(400).json({ error: "Admin can't buy products" });
   if (user.balance < product.price)
     return res.status(400).json({ error: "Insufficient balence" });
 
