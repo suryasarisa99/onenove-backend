@@ -73,6 +73,7 @@ router.post("/signup", async (req, res) => {
       ];
     }
 
+    await parentUser.save();
     await user.save();
 
     console.log("User created: ", user);
