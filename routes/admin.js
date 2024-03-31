@@ -11,44 +11,36 @@ router.get("/reset", async (req, res) => {
     password: "admin",
   });
   await user.save();
-  //   {
-  //     "_id": "ogMSEIl9A",
-  //     "name": "surya",
-  //     "number": "12345",
-  //     "email": "surya",
-  //     "password": "surya",
-  //     "balance": 5000,
-  //     "directChild": [],
-  //     "products": [],
-  //     "parents": [],
-  //     "transactions": [],
-  //     "__v": 0
-  //     },
-  //     {
-  //     "_id": "gGmpTKehB",
-  //     "name": "spider man",
-  //     "number": "11111",
-  //     "email": "spider",
-  //     "password": "spider",
-  //     "balance": 5000,
-  //     "directChild": [],
-  //     "products": [],
-  //     "parents": [
-  //     {
-  //     "name": "surya",
-  //     "id": "ogMSEIl9A",
-  //     "_id": "6609063e2484941a8c5cd97f"
-  //     }
-  //     ],
-  //     "transactions": [],
-  //     "__v": 0
-  //     }
 
   res.json({ mssg: "reseted" });
 });
+router.get("/test", async (req, res) => {
+  // const users = await User.find({}).populate([
+  //   { path: 'transactions.fromUser', select: 'name email' },
+  //   { path: 'directChild', select: 'name number email balance' }
+  // ]);
+  try {
+    const users = await User.find({})
+      .populate("transactions.fromUser", "name email")
+      .populate("directChild", "name number email balance");
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+});
+
 router.get("/users", async (req, res) => {
   const users = await User.find();
   res.json(users);
+});
+
+router.get("/user/:id", async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findById(id)
+    .populate("transactions.fromUser", "name email")
+    .populate("directChild", "name number email balance");
+  res.json(user);
 });
 
 module.exports = router;

@@ -36,7 +36,12 @@ const userSchema = new Schema({
   },
 
   directChild: {
-    type: [String],
+    type: [
+      {
+        type: String,
+        ref: "User",
+      },
+    ],
   },
   products: {
     type: [String],
@@ -47,7 +52,7 @@ const userSchema = new Schema({
       {
         transaction_type: String,
         onProduct: String,
-        fromUser: String,
+        fromUser: { type: String, ref: "User" },
         amount: Number,
         referal_level: Number,
         date: {

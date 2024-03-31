@@ -114,7 +114,9 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/me", authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id, { password: 0 });
+  const user = await User.findById(req.user._id)
+    .populate("transactions.fromUser", "name email number")
+    .populate("directChild", "name number email balance");
 
   if (!user) return res.status(404).json({ error: "User not found" });
 
