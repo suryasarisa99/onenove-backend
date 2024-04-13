@@ -1,8 +1,19 @@
 const { Schema, model } = require("mongoose");
+
+const childType = {
+  type: [
+    {
+      type: String,
+      ref: "User",
+    },
+  ],
+};
+
 const userSchema = new Schema({
   _id: {
     type: String,
     required: true,
+    unique: true,
   },
   name: {
     type: String,
@@ -11,10 +22,12 @@ const userSchema = new Schema({
   number: {
     type: String,
     required: true,
+    unique: true,
   },
   email: {
     type: String,
     required: true,
+    unique: true,
   },
   password: {
     type: String,
@@ -24,18 +37,20 @@ const userSchema = new Schema({
     type: Number,
     default: 5000,
   },
-  // referal_name: {},
-  // referal_number: {},
-  parents: {
-    type: [
-      {
-        name: String,
-        id: String,
-      },
-    ],
+  verified: {
+    type: Boolean,
+    default: false,
   },
-
-  directChild: {
+  otp: {
+    type: {
+      code: String,
+      expireAt: {
+        type: Date,
+        default: Date.now + 3 * 60 * 1000,
+      },
+    },
+  },
+  parents: {
     type: [
       {
         type: String,
@@ -43,10 +58,25 @@ const userSchema = new Schema({
       },
     ],
   },
+  children: {
+    type: {
+      level1: childType,
+      level2: childType,
+      level3: childType,
+      level4: childType,
+      level5: childType,
+    },
+    default: {
+      level1: [],
+      level2: [],
+      level3: [],
+      level4: [],
+      level5: [],
+    },
+  },
   products: {
     type: [String],
   },
-
   transactions: {
     type: [
       {

@@ -2,7 +2,6 @@ const express = require("express");
 const app = express();
 const session = require("express-session");
 require("dotenv").config();
-
 const use = require("./utils/use");
 const dbConnection = require("./utils/db");
 
@@ -10,6 +9,7 @@ use(app);
 dbConnection();
 
 // * Routes
+app.use("/payment", require("./routes/payment"));
 app.use("/auth", require("./routes/auth"));
 app.use("/books", require("./routes/products"));
 app.use("/admin", require("./routes/admin"));

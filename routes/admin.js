@@ -6,9 +6,10 @@ router.get("/reset", async (req, res) => {
   const user = new User({
     _id: "admin",
     name: "admin",
-    number: "00000",
+    number: "1234567890",
     email: "amdin@gmail.com",
     password: "admin",
+    verified: true,
   });
   await user.save();
 

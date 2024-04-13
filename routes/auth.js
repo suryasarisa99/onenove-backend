@@ -1,8 +1,9 @@
 const router = require("express").Router();
-const { User } = require("../models/user");
+const { User, Numbers } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const { v4 } = require("uuid");
 const shortid = require("shortid");
+
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
   let token = req.headers.authorization;
@@ -28,33 +29,22 @@ function authenticateToken(req, res, next) {
 
 router.post("/signup", async (req, res) => {
   try {
-    const { name, number, email, password } = req.body;
-    const { referal } = req.query;
+    const { name, number, email, password, referal } = req.body;
     console.log(req.body);
-    console.log(referal);
 
     if (!name || !number || !email || !password || !referal)
       return res.status(400).json({ error: "All fields are required" });
-
     const prvUser = await User.findOne({ number });
-    // console.log(prvUser);
     if (prvUser) {
       console.log("user already found: ", prvUser);
       return res.status(400).json({ error: "User already exists" });
     }
-
-    const users = await User.find();
-    console.log(users);
-
-    console.log("\n\nparent user");
     const parentUser = await User.findById(referal);
-    console.log(parentUser);
     if (!parentUser) return res.status(400).json({ error: "Invalid referal" });
 
-    const parentsTop3Referals = parentUser.parents
-      .slice(0, 3)
-      .filter((p) => p.id !== "admin");
-
+    // Creating new User
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    console.log("Opt Generated: ", otp);
     const user = new User({
       // _id: v4(),
       _id: shortid.generate(),
@@ -62,22 +52,83 @@ router.post("/signup", async (req, res) => {
       number,
       email,
       password,
+      otp: {
+        code: otp,
+        expireAt: Date.now() + 3 * 60 * 1000,
+      },
     });
 
-    parentUser.directChild.push(user.id);
-
+    // updating level 1 parent
+    const parentsTop3Referals = parentUser.parents
+      .slice(0, 3)
+      .filter((pId) => pId !== "admin");
+    console.log("parentUser ", parentUser);
+    parentUser.children.level1.push(user.id);
     if (parentUser.name !== "admin") {
-      user.parents = [
-        { name: parentUser.name, id: parentUser.id },
-        ...parentsTop3Referals,
-      ];
+      user.parents = [parentUser.id, ...parentsTop3Referals];
     }
 
-    await parentUser.save();
-    await user.save();
+    // updating level 2,3,4 parents
+    const parrentTop3users = await User.find({
+      _id: { $in: parentsTop3Referals },
+    });
+    const parentTop3Promises = parrentTop3users.map(async (parent, index) => {
+      parent.children["level" + (index + 2)].push(user.id);
+      return parent.save();
+    });
 
+    // saving user and 4 parents
+    const results = await Promise.allSettled([
+      ...parentTop3Promises,
+      parentUser.save(),
+      user.save(),
+    ]);
+
+    // checking saved or not
+    results.forEach((result, i) => {
+      if (result.status === "rejected") {
+        console.error(`Error saving user ${i}: ${result.reason}`);
+      }
+    });
     console.log("User created: ", user);
-    res.json({ mssg: "User created" });
+    res.json({ mssg: "User created", id: user.id });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/otp", async (req, res) => {
+  try {
+    const { otp, id } = req.body;
+    if (!id) return res.status(400).json({ error: "Number is required" });
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (user.verified)
+      return res.status(400).json({ error: "User already verified" });
+    if (user.otp.expireAt < Date.now())
+      return res.status(400).json({ error: "OTP expired", isLogedIn: false });
+    if (user.otp.code !== otp)
+      return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
+
+    user.otp = undefined;
+    user.verified = true;
+
+    const token = jwt.sign(
+      { _id: user.id, email: user.email, number: user.number },
+      process.env.JWT_SECRET
+    );
+
+    await user.save();
+    res.json({
+      message: "Credentials matched",
+      isLogedIn: true,
+      token,
+      user,
+      isAdmin: false,
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Internal server error" });
@@ -86,45 +137,50 @@ router.post("/signup", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
-  console.log(req.body);
   if (!number || !password)
     return res.status(400).json({ error: "All fields are required" });
 
-  // const user = await User.findOne({ number, password }, { password: 0 });
-  const user = await User.findOne({ number, password })
-    .populate("transactions.fromUser", "name email number")
-    .populate("directChild", "name number email balance");
+  const user = await User.findOne({ number });
+  if (!user) return res.status(400).json({ error: "Invalid phone number" });
 
-  console.log(user);
-  if (!user) return res.status(400).json({ error: "Invalid credentials" });
+  if (user.password !== password)
+    return res.status(400).json({ error: "Invalid Password" });
+
+  if (!user.verified)
+    return res.json({
+      mssg: "User not verified",
+      isLogedIn: false,
+      id: user._id,
+    });
 
   const token = jwt.sign(
     { _id: user.id, email: user.email, number: user.number },
     process.env.JWT_SECRET
   );
-
-  //   res.cookie("permanent", token, {
-  //     httpOnly: true,
-  //     secure: false,
-  //     sameSite: "strict",
-  //     maxAge: 1000 * 60 * 60 * 24 * 7,
-  //   });
-
   res.json({
-    message: "Logged in",
+    message: "Credentials matched",
+    isLogedIn: true,
     token,
     user,
+    isAdmin: user.name === "admin",
   });
 });
 
-router.get("/me", authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id)
-    .populate("transactions.fromUser", "name email number")
-    .populate("directChild", "name number email balance");
+function sendOtptoNumber(number, otp) {
+  // implment this later
 
+  return otp;
+}
+
+router.get("/me", authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user._id);
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  res.json(user);
+  res.json({
+    isLogedIn: true,
+    user: user,
+    isAdmin: user.name === "admin",
+  });
 });
 
 module.exports = router;

@@ -3,13 +3,7 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../models/user");
 // const { authenticateToken } = require("../routes/auth");
 
-const products = [
-  { id: "4", name: "Book 4", price: 1000 },
-  { id: "3", name: "Book 3", price: 2000 },
-  { id: "1", name: "Book 1", price: 5000 },
-  { id: "2", name: "Book 2", price: 10000 },
-  { id: "5", name: "Book 5", price: 20000 },
-];
+const products = [{ id: "1", name: "Book 1", price: 5000 }];
 
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
@@ -65,9 +59,8 @@ router.get("/buy/:id", authenticateToken, async (req, res) => {
   // parents
   if (user.parents.length > 4)
     res.status(400).json({ error: "Error Having Parents More than 4" });
-  const userParentIds = user.parents.map((p) => p.id);
-  const parentUsers = await User.find({ _id: { $in: userParentIds } });
-  for (let [index, parent] of parentUsers.entries()) {
+  const parentUsers = await User.find({ _id: { $in: user.parents } });
+  const parentUsersSavePromise = parentUsers.map(async (parent, index) => {
     parent.balance += product.price * 0.2;
     parent.transactions.push({
       transaction_type: "Referal Bonus",
@@ -77,8 +70,8 @@ router.get("/buy/:id", authenticateToken, async (req, res) => {
       fromUser: user._id,
       is_debit: false,
     });
-    await parent.save();
-  }
+    return parent.save();
+  });
 
   // admin
   const admin = await User.findById("admin");
@@ -93,8 +86,16 @@ router.get("/buy/:id", authenticateToken, async (req, res) => {
     is_debit: false,
   });
 
-  await admin.save();
-  await user.save();
+  const results = await Promise.allSettled([
+    ...parentUsersSavePromise,
+    admin.save(),
+    user.save(),
+  ]);
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      console.error(`Error saving user ${i}: ${result.reason}`);
+    }
+  });
   res.json(product);
 });
 
