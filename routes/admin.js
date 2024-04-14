@@ -36,6 +36,18 @@ router.get("/users", async (req, res) => {
   res.json(users);
 });
 
+router.get("/delete/:userId", async (req, res) => {
+  const { userId } = req.params;
+  console.log(userId);
+  if (!userId) return res.status(400).json({ error: "User Id is required" });
+  const user = await User.findById(userId);
+  user.transactions = [];
+  user.balance = 5000;
+  user.products = [];
+  await user.save();
+  res.json({ mssg: "deleted" });
+});
+
 router.get("/user/:id", async (req, res) => {
   const { id } = req.params;
   const user = await User.findById(id)

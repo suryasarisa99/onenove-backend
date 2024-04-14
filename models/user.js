@@ -3,8 +3,14 @@ const { Schema, model } = require("mongoose");
 const childType = {
   type: [
     {
-      type: String,
-      ref: "User",
+      _id: {
+        type: String,
+        ref: "User",
+      },
+      valid: {
+        type: Boolean,
+        default: false,
+      },
     },
   ],
 };
@@ -80,6 +86,7 @@ const userSchema = new Schema({
       {
         transaction_id: String,
         m_transaction_id: String,
+        status: String,
         transaction_type: String,
         onProduct: String,
         fromUser: { type: String, ref: "User" },

@@ -71,16 +71,25 @@ router.post("/signup", async (req, res) => {
       _id: { $in: parentsTop3Referals },
     });
     // updating children for parents level 1 and 2,3,4 and admin ( only if if level is less than 4 and not parent is admin)
-    parentUser.children.level1.push(user.id);
+    parentUser.children.level1.push({
+      _id: user.id,
+      valid: false,
+    });
     const parentTop3Promises = parrentTop3users.map(async (parent, index) => {
-      parent.children["level" + (index + 2)].push(user.id);
+      parent.children["level" + (index + 2)].push({
+        _id: user.id,
+        valid: false,
+      });
       return parent.save();
     });
     if (parrentTop3users.length < 3 && parentUser.name !== "admin") {
       // here < 3 , means 1 for index, and another 1 for direct parent ( level 1 )
       // and parentUser.name !== "admin", means parent is not admink, because we already updated in admin as parent (level 1)
       const admin = await User.findById("admin");
-      admin.children[`level${parrentTop3users.length + 2}`].push(user.id);
+      admin.children[`level${parrentTop3users.length + 2}`].push({
+        _id: user.id,
+        valid: false,
+      });
       await admin.save();
     }
 

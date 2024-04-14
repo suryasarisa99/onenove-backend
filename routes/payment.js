@@ -13,7 +13,7 @@ const saltIndex = "1";
 const merchantId = "PGTESTPAYUAT";
 const merchantUserId = "MUID123";
 
-router.get("/pay", async (req, res) => {
+router.post("/pay", async (req, res) => {
   const { _id } = req.body;
   const merchantTransactionId = v4();
 
@@ -39,9 +39,10 @@ router.get("/pay", async (req, res) => {
     merchantTransactionId: merchantTransactionId,
     merchantUserId: merchantUserId,
     amount: 5000,
-    redirectUrl: `http://192.168.0.169:3000/payment/${merchantTransactionId}`,
+    // redirectUrl: `http://192.168.0.169:3000/payment/${merchantTransactionId}?userId=${_id}`, //backend url
+    redirectUrl: `/https://books-b-sooty.vercel.app/payment/${merchantTransactionId}?userId=${_id}`, //backend url
     redirectMode: "REDIRECT",
-    callbackUrl: "https://webhook.site/callback-url",
+    // callbackUrl: `http://192.168.0.169:3000/payment/${merchantTransactionId}?userId=${_id}`, //backend url
     mobileNumber: "9999999999",
     paymentInstrument: {
       type: "PAY_PAGE",
@@ -55,7 +56,7 @@ router.get("/pay", async (req, res) => {
 
   const options = {
     method: "POST",
-    url: `${HOST_URL}${payEndPoint}`,
+    url: `${HOST_URL}${apiEndpoint}`,
     headers: {
       accept: "application/json",
       "Content-Type": "application/json",
@@ -70,7 +71,8 @@ router.get("/pay", async (req, res) => {
     .request(options)
     .then((r) => {
       const url = r.data.data.instrumentResponse.redirectInfo.url;
-      res.redirect(url);
+      // res.redirect(url);
+      res.json({ url: url });
     })
     .catch((err) => {
       console.log("error");
@@ -79,6 +81,11 @@ router.get("/pay", async (req, res) => {
 
 router.get("/:merchantTransactionId", async (req, res) => {
   const merchantTransactionId = req.params.merchantTransactionId;
+  console.log("============================================= ");
+  console.log("============================================= ");
+  console.log("<============= Verification =========> ");
+  console.log("============================================= ");
+  console.log("============================================= ");
   const userId = req.query.userId;
   // const merchantTransactionId = "MT7850590068188104";
   const apiEndpoint = `https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${merchantId}/${merchantTransactionId}`;
@@ -98,30 +105,83 @@ router.get("/:merchantTransactionId", async (req, res) => {
     },
   };
 
-  const user = await User.findById(userId);
-  axios
-    .request(options)
-    .then(function (response) {
-      console.log(response.data);
-      res.send(response.data);
-      user.transactions.forEach((transaction) => {
-        if (transaction.m_transaction_id === merchantTransactionId) {
-          transaction.status = response.data.status ? "Success" : "Failed";
-          transaction.amount = response.data.data.amount;
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ error: "User not found" });
+    const response = await axios.request(options);
+    console.log(response.data);
+
+    const product = { id: "1", price: 5000 };
+
+    const promises = [];
+
+    for (let transaction of user.transactions) {
+      if (transaction.m_transaction_id === merchantTransactionId) {
+        if (response.data.success) {
+          transaction.status = "Success";
+          // transaction.amount = response.data.data.amount;
           transaction.transaction_id = response.data.data.transactionId;
+          user.products.push("1");
+
+          // updating Parent's Rferal Bonus
+          const parentUsers = await User.find({ _id: { $in: user.parents } });
+          const parentUsersLength = parentUsers.length;
+          const parentUsersSavePromise = parentUsers.map(
+            async (parent, index) => {
+              // updating Parent's Rferal Bonus
+              console.log("Parent Index: ", index);
+              let chilrenref = parent.children[`level${index + 1}`].find(
+                (children) => children._id === user._id
+              );
+              if (chilrenref) chilrenref.valid = true;
+              parent.balance += product.price * 0.2;
+              parent.transactions.push({
+                transaction_type: "Referal Bonus",
+                amount: product.price * 0.2,
+                referal_level: index + 1,
+                onProduct: product.id,
+                fromUser: user._id,
+                is_debit: false,
+              });
+              return parent.save();
+            }
+          );
+          const admin = await User.findById("admin");
+          const adminBalance =
+            product.price - parentUsersLength * product.price * 0.2;
+          admin.balance += adminBalance;
+          if (parentUsersLength <= 3) {
+            const childrenRef = admin.children[
+              `level${parentUsersLength + 1}`
+            ].find((child) => child._id === user._id);
+            if (childrenRef) childrenRef.valid = true;
+          }
+          admin.transactions.push({
+            transaction_type: "Referal Bonus",
+            amount: adminBalance,
+            onProduct: product.id,
+            fromUser: user._id,
+            referal_level: parentUsersLength + 1,
+            is_debit: false,
+          });
+          promises.push(...parentUsersSavePromise, admin.save(), user.save());
+        } else {
+          transaction.status = "Failed";
+          transaction.transaction_id = response.data.data.transactionId;
+          promises.push(user.save());
         }
-      });
-      user.products.push("1");
-      user.save();
-    })
-    .catch(function (error) {
-      if (error.response) {
-        console.error("Response data:", error.response.data);
-        console.error("Response status:", error.response.status);
-        console.error("Response headers:", error.response.headers);
-        console.log("error in verification");
+        break;
       }
-    });
+    }
+
+    await Promise.all(promises);
+
+    // res.send(response.data);
+    // res.redirect("http://192.168.0.169:4444/payment-verification");
+    res.redirect("https://one-novel.vercel.app/payment-verification");
+  } catch (err) {
+    console.log(err);
+  }
 });
 
 module.exports = router;
