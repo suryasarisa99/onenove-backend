@@ -77,6 +77,12 @@ router.post("/signup", async (req, res) => {
       return parent.save();
     });
 
+    if (parrentTop3users.length < 3) {
+      const admin = await User.findById("admin");
+      admin.children[`level${parrentTop3users.length + 2}`].push(user.id);
+      await admin.save();
+    }
+
     // saving user and 4 parents
     const results = await Promise.allSettled([
       ...parentTop3Promises,
@@ -107,9 +113,17 @@ router.post("/otp", async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     if (user.verified)
-      return res.status(400).json({ error: "User already verified" });
-    if (user.otp.expireAt < Date.now())
-      return res.status(400).json({ error: "OTP expired", isLogedIn: false });
+      return res.status(400).json({ error: "User Already Verified" });
+    if (user.otp.expireAt < Date.now()) {
+      const otp = Math.floor(1000 + Math.random() * 9000);
+      console.log("Opt Generated: ", otp);
+      user.otp = {
+        code: otp,
+        expireAt: Date.now() + 3 * 60 * 1000,
+      };
+      await user.save();
+      return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
+    }
     if (user.otp.code !== otp)
       return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
 
@@ -141,14 +155,17 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
 
   const user = await User.findOne({ number });
-  if (!user) return res.status(400).json({ error: "Invalid phone number" });
+  if (!user) {
+    console.log("Invalid Phone Number: ", number);
+    return res.status(400).json({ error: "User Not Exist" });
+  }
 
   if (user.password !== password)
     return res.status(400).json({ error: "Invalid Password" });
 
   if (!user.verified)
-    return res.json({
-      mssg: "User not verified",
+    return res.status(400).json({
+      error: "User not verified",
       isLogedIn: false,
       id: user._id,
     });

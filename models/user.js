@@ -64,14 +64,12 @@ const userSchema = new Schema({
       level2: childType,
       level3: childType,
       level4: childType,
-      level5: childType,
     },
     default: {
       level1: [],
       level2: [],
       level3: [],
       level4: [],
-      level5: [],
     },
   },
   products: {
@@ -80,6 +78,8 @@ const userSchema = new Schema({
   transactions: {
     type: [
       {
+        transaction_id: String,
+        m_transaction_id: String,
         transaction_type: String,
         onProduct: String,
         fromUser: { type: String, ref: "User" },
