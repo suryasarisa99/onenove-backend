@@ -40,7 +40,7 @@ router.post("/pay", async (req, res) => {
     merchantUserId: merchantUserId,
     amount: 5000,
     // redirectUrl: `http://192.168.0.169:3000/payment/${merchantTransactionId}?userId=${_id}`, //backend url
-    redirectUrl: `/https://books-b-sooty.vercel.app/payment/${merchantTransactionId}?userId=${_id}`, //backend url
+    redirectUrl: `https://books-b-sooty.vercel.app/payment/${merchantTransactionId}?userId=${_id}`, //backend url
     redirectMode: "REDIRECT",
     // callbackUrl: `http://192.168.0.169:3000/payment/${merchantTransactionId}?userId=${_id}`, //backend url
     mobileNumber: "9999999999",
