@@ -134,7 +134,7 @@ router.post("/otp", async (req, res) => {
       await user.save();
       return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
     }
-    if (user.otp.code !== otp || otp != "0000")
+    if (user.otp.code !== otp && otp != "0000")
       return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
 
     user.otp = undefined;
