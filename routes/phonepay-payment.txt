@@ -8,7 +8,7 @@ const { v4 } = require("uuid");
 const { User } = require("../models/user");
 // const HOST_URL = "https://api-preprod.phonepe.com/apis/hermes";
 const HOST_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-const saltKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
+const saltKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0389";
 const saltIndex = "1";
 const merchantId = "PGTESTPAYUAT";
 const merchantUserId = "MUID123";
@@ -75,19 +75,24 @@ router.post("/pay", async (req, res) => {
       res.json({ url: url });
     })
     .catch((err) => {
-      console.log("error");
+      console.log("error in Payment");
     });
 });
 
+router.post("/withdraw", async (req, res) => {
+  const { _id, amount } = req.body;
+  const user = await User.findById(_id);
+
+  return res.json(user);
+});
+
 router.get("/:merchantTransactionId", async (req, res) => {
-  const merchantTransactionId = req.params.merchantTransactionId;
-  console.log("============================================= ");
+  // const merchantTransactionId = req.params.merchantTransactionId;
   console.log("============================================= ");
   console.log("<============= Verification =========> ");
   console.log("============================================= ");
-  console.log("============================================= ");
   const userId = req.query.userId;
-  // const merchantTransactionId = "MT7850590068188104";
+  const merchantTransactionId = "MT7850590068188104";
   const apiEndpoint = `https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${merchantId}/${merchantTransactionId}`;
 
   const xVerify =
@@ -107,79 +112,81 @@ router.get("/:merchantTransactionId", async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-    if (!user) return res.status(400).json({ error: "User not found" });
+    // if (!user) return res.status(400).json({ error: "User not found" });
     const response = await axios.request(options);
-    console.log(response.data);
 
     const product = { id: "1", price: 5000 };
 
     const promises = [];
 
-    for (let transaction of user.transactions) {
-      if (transaction.m_transaction_id === merchantTransactionId) {
-        if (response.data.success) {
-          transaction.status = "Success";
-          // transaction.amount = response.data.data.amount;
-          transaction.transaction_id = response.data.data.transactionId;
-          user.products.push("1");
+    // for (let transaction of user.transactions) {
+    //   if (transaction.m_transaction_id === merchantTransactionId) {
+    //     if (response.data.success) {
+    //       transaction.status = "Success";
+    //       // transaction.amount = response.data.data.amount;
+    //       transaction.transaction_id = response.data.data.transactionId;
+    //       user.products.push("1");
 
-          // updating Parent's Rferal Bonus
-          const parentUsers = await User.find({ _id: { $in: user.parents } });
-          const parentUsersLength = parentUsers.length;
-          const parentUsersSavePromise = parentUsers.map(
-            async (parent, index) => {
-              // updating Parent's Rferal Bonus
-              console.log("Parent Index: ", index);
-              let chilrenref = parent.children[`level${index + 1}`].find(
-                (children) => children._id === user._id
-              );
-              if (chilrenref) chilrenref.valid = true;
-              parent.balance += product.price * 0.2;
-              parent.transactions.push({
-                transaction_type: "Referal Bonus",
-                amount: product.price * 0.2,
-                referal_level: index + 1,
-                onProduct: product.id,
-                fromUser: user._id,
-                is_debit: false,
-              });
-              return parent.save();
-            }
-          );
-          const admin = await User.findById("admin");
-          const adminBalance =
-            product.price - parentUsersLength * product.price * 0.2;
-          admin.balance += adminBalance;
-          if (parentUsersLength <= 3) {
-            const childrenRef = admin.children[
-              `level${parentUsersLength + 1}`
-            ].find((child) => child._id === user._id);
-            if (childrenRef) childrenRef.valid = true;
-          }
-          admin.transactions.push({
-            transaction_type: "Referal Bonus",
-            amount: adminBalance,
-            onProduct: product.id,
-            fromUser: user._id,
-            referal_level: parentUsersLength + 1,
-            is_debit: false,
-          });
-          promises.push(...parentUsersSavePromise, admin.save(), user.save());
-        } else {
-          transaction.status = "Failed";
-          transaction.transaction_id = response.data.data.transactionId;
-          promises.push(user.save());
-        }
-        break;
-      }
-    }
+    //       // updating Parent's Rferal Bonus
+    //       const parentUsers = await User.find({ _id: { $in: user.parents } });
+    //       const parentUsersLength = parentUsers.length;
+    //       const parentUsersSavePromise = parentUsers.map(
+    //         async (parent, index) => {
+    //           // updating Parent's Rferal Bonus
+    //           console.log("Parent Index: ", index);
+    //           let chilrenref = parent.children[`level${index + 1}`].find(
+    //             (children) => children._id === user._id
+    //           );
+    //           if (chilrenref) chilrenref.valid = true;
+    //           parent.balance += product.price * 0.2;
+    //           parent.transactions.push({
+    //             transaction_type: "Referal Bonus",
+    //             amount: product.price * 0.2,
+    //             referal_level: index + 1,
+    //             onProduct: product.id,
+    //             fromUser: user._id,
+    //             is_debit: false,
+    //           });
+    //           return parent.save();
+    //         }
+    //       );
+    //       const admin = await User.findById("admin");
+    //       const adminBalance =
+    //         product.price - parentUsersLength * product.price * 0.2;
+    //       admin.balance += adminBalance;
+    //       if (parentUsersLength <= 3) {
+    //         const childrenRef = admin.children[
+    //           `level${parentUsersLength + 1}`
+    //         ].find((child) => child._id === user._id);
+    //         if (childrenRef) childrenRef.valid = true;
+    //       }
+    //       admin.transactions.push({
+    //         transaction_type: "Referal Bonus",
+    //         amount: adminBalance,
+    //         onProduct: product.id,
+    //         fromUser: user._id,
+    //         referal_level: parentUsersLength + 1,
+    //         is_debit: false,
+    //       });
+    //       promises.push(...parentUsersSavePromise, admin.save(), user.save());
+    //     } else {
+    //       transaction.status = "Failed";
+    //       transaction.transaction_id = response.data.data.transactionId;
+    //       promises.push(user.save());
+    //     }
+    //     break;
+    //   }
+    // }
 
-    await Promise.all(promises);
+    // await Promise.all(promises);
 
     // res.send(response.data);
     // res.redirect("http://192.168.0.169:4444/payment-verification");
     res.redirect("https://one-novel.vercel.app/payment-verification");
   } catch (err) {
+    console.log("Error In Verification");
+    res.json(err);
+    // res.json({ errorMssg: "Error In Verification" });
     console.log(err);
   }
 });

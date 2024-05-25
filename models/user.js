@@ -21,6 +21,13 @@ const userSchema = new Schema({
     required: true,
     unique: true,
   },
+  // upi: String,
+  // bank: {
+  //   account_no: String,
+  //   ifsc: String,
+  //   bank_name: String,
+  //   branch: String,
+  // },
   name: {
     type: String,
     required: true,
@@ -102,6 +109,46 @@ const userSchema = new Schema({
   },
 });
 
+const ManualPaymentsSchema = new Schema({
+  userId: {
+    type: String,
+    required: true,
+  },
+  utr: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    default: "pending",
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const WithdrawlSchema = new Schema({
+  user: {
+    type: String,
+    ref: "User",
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
+  status: {
+    type: String,
+    default: "Pending",
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 module.exports = {
   User: model("User", userSchema),
+  Withdrawl: model("Withdrawl", WithdrawlSchema),
+  ManualPayments: model("ManualPayments", ManualPaymentsSchema),
 };

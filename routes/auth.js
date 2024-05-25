@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const { User, Numbers } = require("../models/user");
 const jwt = require("jsonwebtoken");
-const { v4 } = require("uuid");
 const shortid = require("shortid");
 
 function authenticateToken(req, res, next) {
@@ -82,6 +81,7 @@ router.post("/signup", async (req, res) => {
       });
       return parent.save();
     });
+
     if (parrentTop3users.length < 3 && parentUser.name !== "admin") {
       // here < 3 , means 1 for index, and another 1 for direct parent ( level 1 )
       // and parentUser.name !== "admin", means parent is not admink, because we already updated in admin as parent (level 1)
