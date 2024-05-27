@@ -21,13 +21,16 @@ const userSchema = new Schema({
     required: true,
     unique: true,
   },
-  // upi: String,
-  // bank: {
-  //   account_no: String,
-  //   ifsc: String,
-  //   bank_name: String,
-  //   branch: String,
-  // },
+  withdrawlType: {
+    type: Number,
+    default: 0,
+  },
+  upi: String,
+  bank: {
+    account_no: String,
+    ifsc: String,
+    bank_name: String,
+  },
   name: {
     type: String,
     required: true,

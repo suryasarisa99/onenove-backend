@@ -199,6 +199,29 @@ function sendOtptoNumber(number, otp) {
   return otp;
 }
 
+router.post("/withdrawl-details", authenticateToken, async (req, res) => {
+  const { type } = req.body;
+  const user = await User.findById(req.user._id);
+  if (type == 1 || type == 3) {
+    const { upi } = req.body;
+    if (!upi) return res.status(400).json({ error: "All fields are required" });
+    user.upi = upi;
+    user.withdrawlType = type;
+  }
+  if (type == 2 || type == 3) {
+    const { bank } = req.body;
+    if (!bank.account_no || !bank.ifsc || !bank.bank_name)
+      return res.status(400).json({ error: "All fields are required" });
+    user.bank = {
+      account_no: bank.account_no,
+      ifsc: bank.ifsc,
+      bank_name: bank.bank_name,
+    };
+    user.withdrawlType = type;
+  }
+  await user.save();
+});
+
 router.get("/me", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) return res.status(404).json({ error: "User not found" });
