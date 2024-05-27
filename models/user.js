@@ -132,9 +132,12 @@ const ManualPaymentsSchema = new Schema({
 });
 
 const WithdrawlSchema = new Schema({
-  user: {
+  userId: {
     type: String,
     ref: "User",
+  },
+  userName: {
+    type: String,
   },
   amount: {
     type: Number,
@@ -143,6 +146,17 @@ const WithdrawlSchema = new Schema({
   status: {
     type: String,
     default: "Pending",
+  },
+  type: {
+    type: Number,
+  },
+  bank: {
+    account_no: String,
+    ifsc: String,
+    bank_name: String,
+  },
+  upi: {
+    type: String,
   },
   date: {
     type: Date,

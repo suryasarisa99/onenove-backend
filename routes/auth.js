@@ -1,7 +1,50 @@
 const router = require("express").Router();
-const { User, Numbers } = require("../models/user");
+const { User, Numbers, Withdrawl } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
+const nodeMailer = require("nodemailer");
+
+const fast2sms = require("fast-two-sms");
+
+function sendOtp(number, name, otp) {
+  fast2sms.sendMessage({
+    authorization:
+      "xIqMWYhwPF7nSmdC4yb8LU0Oiuk9tJpaV2lAzegcj3GKZ1QNHf3wxqXbeTg2MJ8WmtVPYzanQjSICrHp",
+    message: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+    numbers: ["+91" + number],
+  });
+}
+
+const transporter = nodeMailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "gmlexamplez1@gmail.com",
+    pass: "xlslbuuinptfswwu",
+    // pass: "xlslbuuinptfswwu",
+  },
+});
+
+function sendOtpToEmail(email, name, otp) {
+  const mailOptions = {
+    from: process.env.EMAIL,
+    to: email,
+    subject: "OTP Verification",
+    // html: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+  };
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
+}
+
+router.get("/test", async (req, res) => {
+  sendOtpToEmail("suryasarisa99@gmail.com", "Jaya Surya", 1234);
+
+  res.send(Math.floor(1000 + Math.random() * 9000).toString());
+});
 
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
@@ -43,6 +86,7 @@ router.post("/signup", async (req, res) => {
 
     // Creating new User
     const otp = Math.floor(1000 + Math.random() * 9000);
+    sendOtpToEmail(email, name, otp);
     console.log("Opt Generated: ", otp);
     const user = new User({
       // _id: v4(),
@@ -134,7 +178,8 @@ router.post("/otp", async (req, res) => {
       await user.save();
       return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
     }
-    if (user.otp.code !== otp && otp != "0000")
+    // if (user.otp.code !== otp && otp != "0000")
+    if (user.otp.code !== otp)
       return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
 
     user.otp = undefined;
@@ -193,11 +238,43 @@ router.post("/login", async (req, res) => {
   });
 });
 
-function sendOtptoNumber(number, otp) {
-  // implment this later
+router.post("/withdrawl", authenticateToken, async (req, res) => {
+  const { amount, type } = req.body;
+  const userId = req.user._id;
 
-  return otp;
-}
+  if (!amount) return res.status(400).json({ error: "Amount is required" });
+  if (amount < 100)
+    return res.status(400).json({ error: "Minimum amount is 100" });
+
+  const user = await User.findById(userId);
+
+  if (user.balance < amount)
+    return res.status(400).json({ error: "Insufficient Balance" });
+
+  user.balance -= amount;
+
+  const withdrawl = Withdrawl({
+    userId,
+    userName: user.name,
+    amount,
+    status: "pending",
+    type,
+    bank: user.bank,
+    upi: user.upi,
+  });
+
+  user.transactions.push({
+    transaction_type: "withdrawl",
+    amount: -amount,
+    type: "withdrawl",
+    status: "pending",
+    is_debit: true,
+  });
+  await user.save();
+  await withdrawl.save();
+
+  res.json({ mssg: "Withdrawl Requested" });
+});
 
 router.post("/withdrawl-details", authenticateToken, async (req, res) => {
   const { type } = req.body;
@@ -220,6 +297,8 @@ router.post("/withdrawl-details", authenticateToken, async (req, res) => {
     user.withdrawlType = type;
   }
   await user.save();
+
+  return res.json({ mssg: "Details Updated", success: true });
 });
 
 router.get("/me", authenticateToken, async (req, res) => {

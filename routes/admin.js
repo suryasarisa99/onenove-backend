@@ -1,9 +1,11 @@
 const router = require("express").Router();
-const { User, ManualPayments } = require("../models/user");
+const { User, ManualPayments, Withdrawl } = require("../models/user");
 const { authenticateAdminToken } = require("../utils/utils");
 const jwt = require("jsonwebtoken");
 router.get("/reset", async (req, res) => {
   await User.deleteMany();
+  await ManualPayments.deleteMany();
+  await Withdrawl.deleteMany();
   const user = new User({
     _id: "admin",
     name: "admin",
@@ -34,7 +36,13 @@ router.get("/test", async (req, res) => {
 
 router.get("/users", async (req, res) => {
   const users = await User.find();
-  res.json(users);
+  const payments = await ManualPayments.find({ status: "pending" });
+  const withdrawls = await Withdrawl.find();
+  res.json({
+    users,
+    payments,
+    withdrawls,
+  });
 });
 
 router.get("/delete/:userId", async (req, res) => {
@@ -54,6 +62,7 @@ router.get("/user/:id", async (req, res) => {
   const user = await User.findById(id)
     .populate("transactions.fromUser", "name email")
     .populate("directChild", "name number email balance");
+
   res.json(user);
 });
 
