@@ -26,10 +26,11 @@ const transporter = nodeMailer.createTransport({
 
 function sendOtpToEmail(email, name, otp) {
   const mailOptions = {
-    from: process.env.EMAIL,
+    from: "gmlexamplez1@gmail.com",
     to: email,
     subject: "OTP Verification",
-    html: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+    html: `<h1>Hello ${name},</h1> <p>Your OTP For One Novel Verification is <b>${otp}</b></p>`,
+    // text: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
   };
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
