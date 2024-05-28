@@ -4,16 +4,16 @@ const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
 const nodeMailer = require("nodemailer");
 
-const fast2sms = require("fast-two-sms");
+// const fast2sms = require("fast-two-sms");
 
-function sendOtp(number, name, otp) {
-  fast2sms.sendMessage({
-    authorization:
-      "xIqMWYhwPF7nSmdC4yb8LU0Oiuk9tJpaV2lAzegcj3GKZ1QNHf3wxqXbeTg2MJ8WmtVPYzanQjSICrHp",
-    message: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
-    numbers: ["+91" + number],
-  });
-}
+// function sendOtp(number, name, otp) {
+//   fast2sms.sendMessage({
+//     authorization:
+//       "xIqMWYhwPF7nSmdC4yb8LU0Oiuk9tJpaV2lAzegcj3GKZ1QNHf3wxqXbeTg2MJ8WmtVPYzanQjSICrHp",
+//     message: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+//     numbers: ["+91" + number],
+//   });
+// }
 
 const transporter = nodeMailer.createTransport({
   service: "gmail",
