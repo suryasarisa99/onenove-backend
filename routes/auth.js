@@ -29,7 +29,7 @@ function sendOtpToEmail(email, name, otp) {
     from: process.env.EMAIL,
     to: email,
     subject: "OTP Verification",
-    // html: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+    html: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
   };
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
