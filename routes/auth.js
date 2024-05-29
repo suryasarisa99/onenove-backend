@@ -40,13 +40,59 @@ function sendOtpToEmail(email, name, otp) {
   });
 }
 
+function formatDate(date) {
+  const day = date.getDate();
+  const month = date.getMonth() + 1; // Months are zero based
+  const year = date.getFullYear().toString().substr(-2); // Get last two digits of year
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+
+  return `${day}/${month}/${year} - ${hours}:${minutes}`;
+}
+
 function sendResetLink(email, name, link) {
   const mailOptions = {
     from: "gmlexamplez1@gmail.com",
     to: email,
-    subject: "OTP Verification",
-    html: `<h1>Hello ${name},</h1> <h1>Reset Your Forgotted Password  </h1> <a href=${link}>Click Here</a>`,
-    // text: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+    subject: `Resend Password on ${formatDate(new Date())}`,
+    // html: `<h1>Hello ${name},</h1> <h1>Reset Your Forgotted Password  </h1> <a href=${link}>Click Here</a>`,
+    html: `<!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body{
+            background-color: #f5f4f0;
+            padding: 15px;
+            font-family: sans-serif;
+          }
+          .button {
+            background-color: #000000; /* Green */
+            border: none;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+          }
+        </style>
+      </head>
+      <body>
+        <h2>Password Reset Request</h2>
+        <h4>Hello, ${name}</h4>
+        <p>
+          We received a request to reset your password. If you didn't make this
+          request, simply ignore this email. If you did, please click the button
+          below to reset your password:
+        </p>
+        <a href="${link}" class="button">Reset Password</a>
+        <p>Thanks,</p>
+        <p>Your One Novel Team</p>
+      </body>
+    </html>`,
   };
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
@@ -56,6 +102,16 @@ function sendResetLink(email, name, link) {
     }
   });
 }
+
+router.get("/mail", (req, res) => {
+  sendResetLink(
+    "suryasarisa99@gmail.com",
+    "Test",
+    "https://one-novell.vercel.app/reset-password/123456"
+  );
+  res.send("done");
+});
+
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
   let token = req.headers.authorization;
