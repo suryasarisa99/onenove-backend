@@ -7,6 +7,9 @@ const childType = {
         type: String,
         ref: "User",
       },
+      name: {
+        type: String,
+      },
       valid: {
         type: Boolean,
         default: false,
@@ -53,19 +56,23 @@ const userSchema = new Schema({
     type: Number,
     default: 5000,
   },
-  verified: {
+  forgotMode: {
     type: Boolean,
     default: false,
   },
-  otp: {
-    type: {
-      code: String,
-      expireAt: {
-        type: Date,
-        default: Date.now + 3 * 60 * 1000,
-      },
-    },
-  },
+  // verified: {
+  //   type: Boolean,
+  //   default: false,
+  // },
+  // otp: {
+  //   type: {
+  //     code: String,
+  //     expireAt: {
+  //       type: Date,
+  //       default: Date.now + 3 * 60 * 1000,
+  //     },
+  //   },
+  // },
   parents: {
     type: [
       {

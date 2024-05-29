@@ -5,7 +5,6 @@ const shortid = require("shortid");
 const nodeMailer = require("nodemailer");
 
 // const fast2sms = require("fast-two-sms");
-
 // function sendOtp(number, name, otp) {
 //   fast2sms.sendMessage({
 //     authorization:
@@ -41,12 +40,22 @@ function sendOtpToEmail(email, name, otp) {
   });
 }
 
-router.get("/test", async (req, res) => {
-  sendOtpToEmail("suryasarisa99@gmail.com", "Jaya Surya", 1234);
-
-  res.send(Math.floor(1000 + Math.random() * 9000).toString());
-});
-
+function sendResetLink(email, name, link) {
+  const mailOptions = {
+    from: "gmlexamplez1@gmail.com",
+    to: email,
+    subject: "OTP Verification",
+    html: `<h1>Hello ${name},</h1> <h1>Reset Your Forgotted Password  </h1> <a href=${link}>Click Here</a>`,
+    // text: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
+  };
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
+}
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
   let token = req.headers.authorization;
@@ -86,9 +95,8 @@ router.post("/signup", async (req, res) => {
     if (!parentUser) return res.status(400).json({ error: "Invalid referal" });
 
     // Creating new User
-    const otp = Math.floor(1000 + Math.random() * 9000);
-    sendOtpToEmail(email, name, otp);
-    console.log("Opt Generated: ", otp);
+    // const otp = Math.floor(1000 + Math.random() * 9000);
+    // sendOtpToEmail(email, name, otp);
     const user = new User({
       // _id: v4(),
       _id: shortid.generate(),
@@ -96,10 +104,6 @@ router.post("/signup", async (req, res) => {
       number,
       email,
       password,
-      otp: {
-        code: otp,
-        expireAt: Date.now() + 3 * 60 * 1000,
-      },
     });
 
     // updating user parents
@@ -114,14 +118,18 @@ router.post("/signup", async (req, res) => {
     const parrentTop3users = await User.find({
       _id: { $in: parentsTop3Referals },
     });
+
     // updating children for parents level 1 and 2,3,4 and admin ( only if if level is less than 4 and not parent is admin)
     parentUser.children.level1.push({
       _id: user.id,
+      name: user.name,
       valid: false,
     });
+
     const parentTop3Promises = parrentTop3users.map(async (parent, index) => {
       parent.children["level" + (index + 2)].push({
         _id: user.id,
+        name: user.name,
         valid: false,
       });
       return parent.save();
@@ -133,6 +141,7 @@ router.post("/signup", async (req, res) => {
       const admin = await User.findById("admin");
       admin.children[`level${parrentTop3users.length + 2}`].push({
         _id: user.id,
+        name: user.name,
         valid: false,
       });
       await admin.save();
@@ -159,51 +168,51 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-router.post("/otp", async (req, res) => {
-  try {
-    const { otp, id } = req.body;
-    if (!id) return res.status(400).json({ error: "Number is required" });
+// router.post("/otp", async (req, res) => {
+//   try {
+//     const { otp, id } = req.body;
+//     if (!id) return res.status(400).json({ error: "Number is required" });
 
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ error: "User not found" });
+//     const user = await User.findById(id);
+//     if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (user.verified)
-      return res.status(400).json({ error: "User Already Verified" });
-    if (user.otp.expireAt < Date.now()) {
-      const otp = Math.floor(1000 + Math.random() * 9000);
-      console.log("Opt Generated: ", otp);
-      user.otp = {
-        code: otp,
-        expireAt: Date.now() + 3 * 60 * 1000,
-      };
-      await user.save();
-      return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
-    }
-    // if (user.otp.code !== otp && otp != "0000")
-    if (user.otp.code !== otp)
-      return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
+//     if (user.verified)
+//       return res.status(400).json({ error: "User Already Verified" });
+//     if (user.otp.expireAt < Date.now()) {
+//       const otp = Math.floor(1000 + Math.random() * 9000);
+//       console.log("Opt Generated: ", otp);
+//       user.otp = {
+//         code: otp,
+//         expireAt: Date.now() + 3 * 60 * 1000,
+//       };
+//       await user.save();
+//       return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
+//     }
+//     // if (user.otp.code !== otp && otp != "0000")
+//     if (user.otp.code !== otp)
+//       return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
 
-    user.otp = undefined;
-    user.verified = true;
+//     user.otp = undefined;
+//     user.verified = true;
 
-    const token = jwt.sign(
-      { _id: user.id, email: user.email, number: user.number },
-      process.env.JWT_SECRET
-    );
+//     const token = jwt.sign(
+//       { _id: user.id, email: user.email, number: user.number },
+//       process.env.JWT_SECRET
+//     );
 
-    await user.save();
-    res.json({
-      message: "Credentials matched",
-      isLogedIn: true,
-      token,
-      user,
-      isAdmin: false,
-    });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+//     await user.save();
+//     res.json({
+//       message: "Credentials matched",
+//       isLogedIn: true,
+//       token,
+//       user,
+//       isAdmin: false,
+//     });
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
 
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
@@ -219,12 +228,12 @@ router.post("/login", async (req, res) => {
   if (user.password !== password)
     return res.status(400).json({ error: "Invalid Password" });
 
-  if (!user.verified)
-    return res.status(400).json({
-      error: "User not verified",
-      isLogedIn: false,
-      id: user._id,
-    });
+  // if (!user.verified)
+  //   return res.status(400).json({
+  //     error: "User not verified",
+  //     isLogedIn: false,
+  //     id: user._id,
+  //   });
 
   const token = jwt.sign(
     { _id: user.id, email: user.email, number: user.number },
@@ -265,6 +274,7 @@ router.post("/withdrawl", authenticateToken, async (req, res) => {
   });
 
   user.transactions.push({
+    id: withdrawl.id,
     transaction_type: "withdrawl",
     amount: -amount,
     type: "withdrawl",
@@ -300,6 +310,60 @@ router.post("/withdrawl-details", authenticateToken, async (req, res) => {
   await user.save();
 
   return res.json({ mssg: "Details Updated", success: true });
+});
+
+router.post("/reset-password", async (req, res) => {
+  const { password, token } = req.body;
+  console.log("reset password: ");
+  if (!password || !token)
+    return res.status(400).json({ error: "All fields are required" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { number } = decoded;
+    const user = await User.findOne({ number });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user.forgotMode)
+      return res.status(400).json({
+        title: "Already Used This Link",
+        error: "Please Login with New Password or use Forget Password Again",
+      });
+    user.password = password;
+    user.forgotMode = false;
+    await user.save();
+    res.json({ mssg: "Password Updated" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      title: "Password Reset Link Expired",
+      error:
+        "The Password Reset Link is Only Valid for 15 Minutes, Please Try Again",
+    });
+  }
+});
+
+router.get("/forgot-password/:number", async (req, res) => {
+  const { number } = req.params;
+
+  const user = await User.findOne({ number });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const resetToken = jwt.sign({ number }, process.env.JWT_SECRET, {
+    expiresIn: 60 * 15, // 15 minutes
+  });
+
+  // const resetLink = `http://192.168.0.169:4444/reset-password/${resetToken}`;
+  const resetLink = `https://one-novell.vercel.app/reset-password/${resetToken}`;
+  user.forgotMode = true;
+  sendResetLink(user.email, user.name, resetLink);
+  await user.save();
+
+  res.json({
+    mssg: "Reset Link Sent",
+    mail:
+      user.email.substring(0, 3) +
+      "*****" +
+      user.email.substring(user.email.indexOf("@") - 1),
+  });
 });
 
 router.get("/me", authenticateToken, async (req, res) => {

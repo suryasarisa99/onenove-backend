@@ -95,17 +95,61 @@ router.post("/login", async (req, res) => {
   res.json({ user, payments, token });
 });
 
+router.post(
+  "/confirm-withdrawl/:id",
+  authenticateAdminToken,
+  async (req, res) => {
+    const { id } = req.params;
+    const { message, status } = req.body;
+    const withdrawl = await Withdrawl.findById(id);
+    if (status === "rejected") {
+      withdrawl.status = status;
+
+      User.UpdateOne(
+        { _id: withdrawl.userId, "transaction._id": id },
+        {
+          $set: {
+            "transaction.$.status": "rejected",
+            "transaction.$.message": message,
+          },
+          $inc: {
+            balance: withdrawl.amount,
+          },
+        }
+      );
+
+      await withdrawl.save();
+      return res.json({ mssg: "Withdrawl Rejected" });
+    } else if (status === "accepted") {
+      withdrawl.status = status;
+      User.UpdateOne(
+        { _id: withdrawl.userId, "transaction._id": id },
+        {
+          $set: {
+            "transaction.$.status": "accepted",
+            "transaction.$.message": message,
+          },
+        }
+      );
+      await withdrawl.save();
+      return res.json({ mssg: "Withdrawl Accepted" });
+    } else {
+      return res.json({ mssg: "Invalid Status" });
+    }
+  }
+);
+
 router.get("/confirm-m-pay/:id", authenticateAdminToken, async (req, res) => {
   const { id } = req.params;
   const status = req.query.status;
 
   const payment = await ManualPayments.findById(id);
 
-  if (status === "reject") {
+  if (status === "rejected") {
     payment.status = status;
     await payment.save();
     return res.json({ mssg: "Payment Rejected" });
-  } else if (status === "accept") {
+  } else if (status === "accepted") {
     console.log("INside accept");
     payment.status = status;
     const user = await User.findById(payment.userId);
