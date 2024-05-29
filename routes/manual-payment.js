@@ -1,16 +1,22 @@
 const express = require("express");
-const { ManualPayments } = require("../models/user");
+const { ManualPayments, User } = require("../models/user");
 const router = express.Router();
 const { authenticateAdminToken, authenticateToken } = require("../utils/utils");
 
-router.post("/pay", async (req, res) => {
-  const { id, utr } = req.body;
+router.post("/pay", authenticateToken, async (req, res) => {
+  const { utr } = req.body;
+  const { _id } = req.user;
 
-  if (!id || !utr)
-    return res.status(400).json({ error: "All fields are required" });
+  if (!_id) return res.status(400).json({ error: "UnAuthorizatiod" });
+  if (!utr) return res.status(400).json({ error: "UTR is Empty" });
+  const user = await User.findById(_id);
+
+  if (!user) return res.status(404).json({ error: "User not found" });
 
   const payment = ManualPayments({
-    userId: id,
+    userId: _id,
+    userName: user.name,
+    number: user.number,
     utr: utr,
   });
 

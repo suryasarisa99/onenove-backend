@@ -124,6 +124,8 @@ const ManualPaymentsSchema = new Schema({
     type: String,
     required: true,
   },
+  userName: String,
+  number: String,
   utr: {
     type: String,
     required: true,
