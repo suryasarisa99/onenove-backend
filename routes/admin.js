@@ -90,7 +90,6 @@ router.post("/login", async (req, res) => {
     { _id: user.id, email: user.email, number: user.number },
     process.env.JWT_SECRET
   );
-
   const payments = await ManualPayments.find({ status: "pending" });
   res.json({ user, payments, token });
 });
@@ -101,33 +100,36 @@ router.post(
   async (req, res) => {
     const { id } = req.params;
     const { message, status } = req.body;
+    console.log(id, message, status);
+
     const withdrawl = await Withdrawl.findById(id);
+    if (!withdrawl)
+      return res.status(404).json({ error: "Withdrawl not found" });
+
     if (status === "rejected") {
       withdrawl.status = status;
-
-      User.UpdateOne(
-        { _id: withdrawl.userId, "transaction._id": id },
+      await User.updateOne(
+        { _id: withdrawl.userId, "transactions._id": id },
         {
           $set: {
-            "transaction.$.status": "rejected",
-            "transaction.$.message": message,
+            "transactions.$.status": "rejected",
+            "transactions.$.message": message,
           },
           $inc: {
             balance: withdrawl.amount,
           },
         }
       );
-
       await withdrawl.save();
       return res.json({ mssg: "Withdrawl Rejected" });
     } else if (status === "accepted") {
       withdrawl.status = status;
-      User.UpdateOne(
-        { _id: withdrawl.userId, "transaction._id": id },
+      await User.updateOne(
+        { _id: withdrawl.userId, "transactions._id": id },
         {
           $set: {
-            "transaction.$.status": "accepted",
-            "transaction.$.message": message,
+            "transactions.$.status": "accepted",
+            "transactions.$.message": message,
           },
         }
       );
@@ -212,7 +214,8 @@ router.get("/confirm-m-pay/:id", authenticateAdminToken, async (req, res) => {
 router.get("/", authenticateAdminToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   const payments = await ManualPayments.find({ status: "pending" });
-  res.json({ user, payments });
+  const withdrawls = await Withdrawl.find({ status: "pending" });
+  res.json({ user, payments, withdrawls });
 });
 
 module.exports = router;

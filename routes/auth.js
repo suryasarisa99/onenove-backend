@@ -79,7 +79,7 @@ function sendResetLink(email, name, link) {
             cursor: pointer;
           }
         </style>
-      </head>
+      </head>np
       <body>
         <h2>Password Reset Request</h2>
         <h4>Hello, ${name}</h4>
