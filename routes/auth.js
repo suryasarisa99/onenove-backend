@@ -50,7 +50,7 @@ function formatDate(date) {
   return `${day}/${month}/${year} - ${hours}:${minutes}`;
 }
 
-function sendResetLink(email, name, link) {
+async function sendResetLink(email, name, link) {
   const mailOptions = {
     from: "gmlexamplez1@gmail.com",
     to: email,
@@ -94,13 +94,7 @@ function sendResetLink(email, name, link) {
       </body>
     </html>`,
   };
-  transporter.sendMail(mailOptions, function (error, info) {
-    if (error) {
-      console.log("Email Failed: " + error);
-    } else {
-      console.log("Email sent: " + info.response);
-    }
-  });
+  await transporter.sendMail(mailOptions);
 }
 
 router.get("/mail", (req, res) => {
@@ -430,7 +424,7 @@ router.get("/forgot-password/:number", async (req, res) => {
   // const resetLink = `http://192.168.0.169:4444/reset-password/${resetToken}`;
   const resetLink = `https://one-novell.vercel.app/reset-password/${resetToken}`;
   user.forgotMode = true;
-  sendResetLink(user.email, user.name, resetLink);
+  await sendResetLink(user.email, user.name, resetLink);
   await user.save();
 
   res.json({
