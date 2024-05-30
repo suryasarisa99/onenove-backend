@@ -1,8 +1,13 @@
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const { User, Numbers, Withdrawl } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
 const nodeMailer = require("nodemailer");
+const { put } = require("@vercel/blob");
+const multer = require("multer");
+const upload = multer();
+const path = require("path");
 
 // const fast2sms = require("fast-two-sms");
 // function sendOtp(number, name, otp) {
@@ -80,7 +85,7 @@ async function sendResetLink(email, name, link) {
             cursor: pointer;
           }
         </style>
-      </head>np
+      </head>
       <body>
         <h2>Password Reset Request</h2>
         <h4>Hello, ${name}</h4>
@@ -436,6 +441,25 @@ router.get("/forgot-password/:number", async (req, res) => {
       user.email.substring(user.email.indexOf("@") - 1),
   });
 });
+
+router.post(
+  "/upload",
+  authenticateToken,
+  upload.single("file"),
+  async (req, res) => {
+    const id = req.user._id;
+    const filename = id + path.extname(req.file.originalname);
+    const blob = await put(filename, req.file.buffer, {
+      access: "public",
+    });
+    await User.updateOne(
+      { _id: id },
+      { $set: { uploadUrl: blob.url, uploadStatus: "pending" } }
+    );
+    console.log("Blob: ", blob.url);
+    res.json({ mssg: "Uploaded" });
+  }
+);
 
 router.get("/me", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);

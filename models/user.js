@@ -73,6 +73,8 @@ const userSchema = new Schema({
   //     },
   //   },
   // },
+  uploadUrl: String,
+  uploadStatus: String,
   parents: {
     type: [
       {
