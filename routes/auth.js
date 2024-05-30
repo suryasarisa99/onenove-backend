@@ -96,7 +96,7 @@ function sendResetLink(email, name, link) {
   };
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
-      console.log(error);
+      console.log("Email Failed: " + error);
     } else {
       console.log("Email sent: " + info.response);
     }
@@ -110,6 +110,26 @@ router.get("/mail", (req, res) => {
     "https://one-novell.vercel.app/reset-password/123456"
   );
   res.send("done");
+});
+
+router.get("/mail-test", (req, res) => {
+  transporter.sendMail(
+    {
+      from: "gmlexamplez1",
+      to: "suryasarisa99@gmail.com",
+      subject: `Test Email ${formatDate(new Date())}`,
+      html: `<h1>Hello, Test Email</h1>`,
+    },
+    function (error, info) {
+      if (error) {
+        console.log("Email Failed: " + error);
+        return res.status(500).json({ mssg: "Email Failed", error });
+      } else {
+        console.log("Email sent: " + info.response);
+        return res.json({ mssg: "Email Sent", info });
+      }
+    }
+  );
 });
 
 function authenticateToken(req, res, next) {
