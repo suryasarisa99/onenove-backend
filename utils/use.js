@@ -2,12 +2,17 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
-const origins = [];
+const origins = [
+  "http://192.168.0.169:4444",
+  "https://one-novel.vercel.app",
+  "https://one-novell.vercel.app",
+  "https://one-novel-admin.vercel.app",
+];
 
 const corsOptions = {
   allowedHeaders: "Content-Type, Authorization",
   methods: "GET, POST, PUT, PATCH, DELETE",
-  origin: "*",
+  origin: origins,
   //   origins: origins,
   //   credentials: true,
 };
