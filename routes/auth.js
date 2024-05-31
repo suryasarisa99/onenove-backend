@@ -261,16 +261,24 @@ router.post("/otp", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
   if (!number || !password)
-    return res.status(400).json({ error: "All fields are required" });
+    return res.status(400).json({
+      error: "All fields are required",
+      mssg: "Please Enter All Fields, Try Again",
+    });
 
   const user = await User.findOne({ number });
   if (!user) {
     console.log("Invalid Phone Number: ", number);
-    return res.status(400).json({ error: "User Not Exist" });
+    return res.status(400).json({
+      error: "User Not Exist",
+      mssg: "Currently There is no User Registered with that phone number, Register Your Accout",
+    });
   }
-
   if (user.password !== password)
-    return res.status(400).json({ error: "Invalid Password" });
+    return res.status(400).json({
+      error: "Invalid Password",
+      mssg: "Please Enter Correct Password",
+    });
 
   if (!user.verified) {
     // write code to get current time in india ( +5:30 )
@@ -295,6 +303,7 @@ router.post("/login", async (req, res) => {
 
     return res.status(400).json({
       error: "User not verified",
+      mssg: `Please Verify Your Account, OTP Sent to Your ${user.email}`,
       isLogedIn: false,
       id: user._id,
     });
