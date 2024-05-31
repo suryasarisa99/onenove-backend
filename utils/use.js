@@ -7,7 +7,7 @@ const origins = [
   "https://one-novel.vercel.app",
   "https://one-novell.vercel.app",
   "https://one-novel-admin.vercel.app",
-  "https://wwww.onenovel.in",
+  "https://www.onenovel.in",
   "https://onenovel.in",
 ];
 
