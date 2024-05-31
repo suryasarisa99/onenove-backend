@@ -8,6 +8,7 @@ const { put } = require("@vercel/blob");
 const multer = require("multer");
 const upload = multer();
 const path = require("path");
+const { get } = require("http");
 
 // const fast2sms = require("fast-two-sms");
 // function sendOtp(number, name, otp) {
@@ -22,28 +23,19 @@ const path = require("path");
 const transporter = nodeMailer.createTransport({
   service: "gmail",
   auth: {
-    // user: "gmlexamplez1@gmail.com",
-    // pass: "xlslbuuinptfswwu",
     user: "1.one.novel.service@gmail.com",
     pass: "ccsvxpdknzrsyate",
   },
 });
 
-function sendOtpToEmail(email, name, otp) {
+async function sendOtpToEmail(email, name, otp) {
   const mailOptions = {
-    from: "gmlexamplez1@gmail.com",
     to: email,
     subject: "OTP Verification",
     html: `<h1>Hello ${name},</h1> <p>Your OTP For One Novel Verification is <b>${otp}</b></p>`,
     // text: `Hello ${name}, \n Your OTP For One Novel Verification is ${otp}`,
   };
-  transporter.sendMail(mailOptions, function (error, info) {
-    if (error) {
-      console.log(error);
-    } else {
-      console.log("Email sent: " + info.response);
-    }
-  });
+  await transporter.sendMail(mailOptions);
 }
 
 function formatDate(date) {
@@ -58,7 +50,7 @@ function formatDate(date) {
 
 async function sendResetLink(email, name, link) {
   const mailOptions = {
-    from: "gmlexamplez1@gmail.com",
+    from: "1.one.novel.support@gmail.com",
     to: email,
     subject: `Resend Password on ${formatDate(new Date())}`,
     // html: `<h1>Hello ${name},</h1> <h1>Reset Your Forgotted Password  </h1> <a href=${link}>Click Here</a>`,
@@ -103,34 +95,7 @@ async function sendResetLink(email, name, link) {
   await transporter.sendMail(mailOptions);
 }
 
-router.get("/mail", (req, res) => {
-  sendResetLink(
-    "suryasarisa99@gmail.com",
-    "Test",
-    "https://one-novell.vercel.app/reset-password/123456"
-  );
-  res.send("done");
-});
-
-router.get("/mail-test", (req, res) => {
-  transporter.sendMail(
-    {
-      from: "gmlexamplez1",
-      to: "suryasarisa99@gmail.com",
-      subject: `Test Email ${formatDate(new Date())}`,
-      html: `<h1>Hello, Test Email</h1>`,
-    },
-    function (error, info) {
-      if (error) {
-        console.log("Email Failed: " + error);
-        return res.status(500).json({ mssg: "Email Failed", error });
-      } else {
-        console.log("Email sent: " + info.response);
-        return res.json({ mssg: "Email Sent", info });
-      }
-    }
-  );
-});
+router.get("/mail-test", (req, res) => {});
 
 function authenticateToken(req, res, next) {
   // let token = req.cookies.permanent;
@@ -171,14 +136,17 @@ router.post("/signup", async (req, res) => {
     if (!parentUser) return res.status(400).json({ error: "Invalid referal" });
 
     // Creating new User
-    // const otp = Math.floor(1000 + Math.random() * 9000);
-    // sendOtpToEmail(email, name, otp);
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    await sendOtpToEmail(email, name, otp);
     const user = new User({
       // _id: v4(),
       _id: shortid.generate(),
       name,
       number,
       email,
+      otp: {
+        code: otp,
+      },
       password,
     });
 
@@ -244,51 +212,51 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// router.post("/otp", async (req, res) => {
-//   try {
-//     const { otp, id } = req.body;
-//     if (!id) return res.status(400).json({ error: "Number is required" });
+router.post("/otp", async (req, res) => {
+  try {
+    const { otp, id } = req.body;
+    if (!id) return res.status(400).json({ error: "Number is required" });
 
-//     const user = await User.findById(id);
-//     if (!user) return res.status(404).json({ error: "User not found" });
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-//     if (user.verified)
-//       return res.status(400).json({ error: "User Already Verified" });
-//     if (user.otp.expireAt < Date.now()) {
-//       const otp = Math.floor(1000 + Math.random() * 9000);
-//       console.log("Opt Generated: ", otp);
-//       user.otp = {
-//         code: otp,
-//         expireAt: Date.now() + 3 * 60 * 1000,
-//       };
-//       await user.save();
-//       return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
-//     }
-//     // if (user.otp.code !== otp && otp != "0000")
-//     if (user.otp.code !== otp)
-//       return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
+    if (user.verified)
+      return res.status(400).json({ error: "User Already Verified" });
+    if (user.otp.expireAt < Date.now()) {
+      const otp = Math.floor(1000 + Math.random() * 9000);
+      console.log("Opt Generated: ", otp);
+      user.otp = {
+        code: otp,
+        expireAt: Date.now() + 3 * 60 * 1000,
+      };
+      await user.save();
+      return res.status(400).json({ error: "OTP Expired", isLogedIn: false });
+    }
+    // if (user.otp.code !== otp && otp != "0000")
+    if (user.otp.code !== otp)
+      return res.status(400).json({ error: "Invalid OTP", isLogedIn: false });
 
-//     user.otp = undefined;
-//     user.verified = true;
+    user.otp = undefined;
+    user.verified = true;
 
-//     const token = jwt.sign(
-//       { _id: user.id, email: user.email, number: user.number },
-//       process.env.JWT_SECRET
-//     );
+    const token = jwt.sign(
+      { _id: user.id, email: user.email, number: user.number },
+      process.env.JWT_SECRET
+    );
 
-//     await user.save();
-//     res.json({
-//       message: "Credentials matched",
-//       isLogedIn: true,
-//       token,
-//       user,
-//       isAdmin: false,
-//     });
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// });
+    await user.save();
+    res.json({
+      message: "Credentials matched",
+      isLogedIn: true,
+      token,
+      user,
+      isAdmin: false,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
@@ -304,12 +272,33 @@ router.post("/login", async (req, res) => {
   if (user.password !== password)
     return res.status(400).json({ error: "Invalid Password" });
 
-  // if (!user.verified)
-  //   return res.status(400).json({
-  //     error: "User not verified",
-  //     isLogedIn: false,
-  //     id: user._id,
-  //   });
+  if (!user.verified) {
+    // write code to get current time in india ( +5:30 )
+    const currentTime = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata",
+    });
+    // generate otp: when otp is undefined || otp is expired
+    // use old otp: if otp has minimum 3 minutes left to expire
+    console.log(user);
+    if (!user.otp || user.otp.expireAt < currentTime) {
+      const otp = Math.floor(1000 + Math.random() * 9000);
+      console.log("Opt Generated: ", otp);
+      user.otp = {
+        code: otp,
+        expireAt: Date.now() + 3 * 60 * 1000,
+      };
+      await sendOtpToEmail(user.email, user.name, otp);
+      await user.save();
+    } else if (currentTime - user.otp.expireAt < 3 * 60 * 1000) {
+      await sendOtpToEmail(user.email, user.name, user.otp.code);
+    }
+
+    return res.status(400).json({
+      error: "User not verified",
+      isLogedIn: false,
+      id: user._id,
+    });
+  }
 
   const token = jwt.sign(
     { _id: user.id, email: user.email, number: user.number },
@@ -421,7 +410,11 @@ router.get("/forgot-password/:number", async (req, res) => {
   const { number } = req.params;
 
   const user = await User.findOne({ number });
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user)
+    return res.status(404).json({
+      title: "Invalid Details",
+      error: "Please Enter Valid Phone Number",
+    });
 
   const resetToken = jwt.sign({ number }, process.env.JWT_SECRET, {
     expiresIn: 60 * 15, // 15 minutes

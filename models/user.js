@@ -60,19 +60,19 @@ const userSchema = new Schema({
     type: Boolean,
     default: false,
   },
-  // verified: {
-  //   type: Boolean,
-  //   default: false,
-  // },
-  // otp: {
-  //   type: {
-  //     code: String,
-  //     expireAt: {
-  //       type: Date,
-  //       default: Date.now + 3 * 60 * 1000,
-  //     },
-  //   },
-  // },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
+  otp: {
+    type: {
+      code: String,
+      expireAt: {
+        type: Date,
+        default: Date.now + 15 * 60 * 1000,
+      },
+    },
+  },
   uploadUrl: String,
   uploadStatus: String,
   parents: {
