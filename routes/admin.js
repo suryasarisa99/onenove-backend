@@ -40,8 +40,8 @@ router.get("/users", async (req, res) => {
   const withdrawls = await Withdrawl.find();
   res.json({
     users,
-    payments,
-    withdrawls,
+    // payments,
+    // withdrawls,
   });
 });
 

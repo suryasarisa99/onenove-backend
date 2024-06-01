@@ -3,12 +3,12 @@ const router = express.Router();
 const { User, Numbers, Withdrawl } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
-const nodeMailer = require("nodemailer");
 const { put } = require("@vercel/blob");
 const multer = require("multer");
 const upload = multer();
 const path = require("path");
 const { get } = require("http");
+const { authenticateToken, transporter } = require("../utils/utils");
 
 // const fast2sms = require("fast-two-sms");
 // function sendOtp(number, name, otp) {
@@ -87,42 +87,23 @@ async function sendResetLink(email, name, link) {
   await transporter.sendMail(mailOptions);
 }
 
-router.get("/mail-test", (req, res) => {});
-
-function authenticateToken(req, res, next) {
-  // let token = req.cookies.permanent;
-  let token = req.headers.authorization;
-  console.log(token);
-  token = token.split(" ")[1];
-  if (!token)
-    return res.status(401).json({ error: "Unauthorized", message: "No Token" });
-  try {
-    let user = jwt.verify(token, process.env.JWT_SECRET);
-    if (user._id) {
-      req.user = user;
-      next();
-    } else {
-      console.log("User not found in token");
-      res.status(401).json({ error: "Unauthorized" });
-    }
-  } catch (err) {
-    console.log(err);
-    console.log("invalid token");
-    res.status(401).json({ error: "Unauthorized", message: "Invalid Token" });
-  }
-}
-
 router.post("/signup", async (req, res) => {
   try {
     const { name, number, email, password, referal } = req.body;
     console.log(req.body);
 
     if (!name || !number || !email || !password || !referal)
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({
+        error: "All fields are required",
+        mssg: "Please Enter All Fields",
+      });
     const prvUser = await User.findOne({ number });
     if (prvUser) {
       console.log("user already found: ", prvUser);
-      return res.status(400).json({ error: "User already exists" });
+      return res.status(400).json({
+        error: "User already exists",
+        mssg: "User Already Exists With that Phone Number, Please Login. Or Try with Another Number",
+      });
     }
     const parentUser = await User.findById(referal);
     if (!parentUser) return res.status(400).json({ error: "Invalid referal" });
@@ -138,6 +119,7 @@ router.post("/signup", async (req, res) => {
       email,
       otp: {
         code: otp,
+        expireAt: Date.now() + 15 * 60 * 1000,
       },
       password,
     });
@@ -183,11 +165,19 @@ router.post("/signup", async (req, res) => {
       await admin.save();
     }
 
+    try {
+      await user.save();
+    } catch {
+      return res.status(400).json({
+        error: "User Already Exists",
+        mssg: "User Already Exists With that Email Address, Please Login. Or Try with Another Email Address",
+      });
+    }
+
     // saving user and 4 parents
     const results = await Promise.allSettled([
       ...parentTop3Promises,
       parentUser.save(),
-      user.save(),
     ]);
 
     // checking saved or not
@@ -196,7 +186,7 @@ router.post("/signup", async (req, res) => {
         console.error(`Error saving user ${i}: ${result.reason}`);
       }
     });
-    console.log("User created: ", user);
+
     res.json({ mssg: "User created", id: user.id });
   } catch (err) {
     console.log(err);
@@ -271,13 +261,13 @@ router.post("/login", async (req, res) => {
     console.log("Invalid Phone Number: ", number);
     return res.status(400).json({
       error: "User Not Exist",
-      mssg: "Currently There is no User Registered with that phone number, Register Your Accout",
+      mssg: "No user found with this phone number. Please Signup to continue.",
     });
   }
   if (user.password !== password)
     return res.status(400).json({
       error: "Invalid Password",
-      mssg: "Please Enter Correct Password",
+      mssg: "The password you entered is incorrect. Please try again.",
     });
 
   if (!user.verified) {
@@ -303,7 +293,7 @@ router.post("/login", async (req, res) => {
 
     return res.status(400).json({
       error: "User not verified",
-      mssg: `Please Verify Your Account, OTP Sent to Your ${user.email}`,
+      mssg: `The phone number you entered is not verified. Please verify to continue. OTP Sent to Your ${user.email}`,
       isLogedIn: false,
       id: user._id,
     });
@@ -328,17 +318,24 @@ router.post("/withdrawl", authenticateToken, async (req, res) => {
 
   if (!amount) return res.status(400).json({ error: "Amount is required" });
   if (amount < 100)
-    return res.status(400).json({ error: "Minimum amount is 100" });
+    return res.status(400).json({
+      error: "Minimum amount is 100",
+      mssg: "Please Enter Amount Greater than 100 And Try Again",
+    });
 
   const user = await User.findById(userId);
 
   if (user.products.length == 0)
-    return res
-      .status(400)
-      .json({ error: "You need to buy a product to withdraw" });
+    return res.status(400).json({
+      error: "Buy Product First",
+      mssg: "Please Buy a Product to become member of OneNovel. Only Valid Members can Withdrawl",
+    });
 
   if (user.balance < amount)
-    return res.status(400).json({ error: "Insufficient Balance" });
+    return res.status(400).json({
+      error: "Insufficient Balance",
+      mssg: `You don't have enough balance, Your Balance is ${user.balance}`,
+    });
 
   user.balance -= amount;
 
@@ -371,14 +368,21 @@ router.post("/withdrawl-details", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   if (type == 1 || type == 3) {
     const { upi } = req.body;
-    if (!upi) return res.status(400).json({ error: "All fields are required" });
+    if (!upi)
+      return res.status(400).json({
+        error: "All fields are required",
+        mssg: "Please Fill All Required Fields to Continue",
+      });
     user.upi = upi;
     user.withdrawlType = type;
   }
   if (type == 2 || type == 3) {
     const { bank } = req.body;
     if (!bank.account_no || !bank.ifsc || !bank.bank_name)
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({
+        error: "All fields are required",
+        mssg: "Please Fill All Required Fields to Continue",
+      });
     user.bank = {
       account_no: bank.account_no,
       ifsc: bank.ifsc,
@@ -395,7 +399,10 @@ router.post("/reset-password", async (req, res) => {
   const { password, token } = req.body;
   console.log("reset password: ");
   if (!password || !token)
-    return res.status(400).json({ error: "All fields are required" });
+    return res.status(400).json({
+      error: "All fields are required",
+      mssg: "Please Enter All Fields to Continue",
+    });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { number } = decoded;
@@ -403,8 +410,8 @@ router.post("/reset-password", async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
     if (!user.forgotMode)
       return res.status(400).json({
-        title: "Already Used This Link",
-        error: "Please Login with New Password or use Forget Password Again",
+        error: "The Password Reset Link is Already Used",
+        mssg: "Please Login with New Password or try  Forget Password Again",
       });
     user.password = password;
     user.forgotMode = false;
@@ -413,9 +420,8 @@ router.post("/reset-password", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({
-      title: "Password Reset Link Expired",
-      error:
-        "The Password Reset Link is Only Valid for 15 Minutes, Please Try Again",
+      error: "Password Reset Link Expired",
+      mssg: "The Password Reset Link is Only Valid for 15 Minutes, Please Try Again",
     });
   }
 });
@@ -426,8 +432,8 @@ router.get("/forgot-password/:number", async (req, res) => {
   const user = await User.findOne({ number });
   if (!user)
     return res.status(404).json({
-      title: "Invalid Details",
-      error: "Please Enter Valid Phone Number",
+      error: "Invalid Details",
+      mssg: "Please Enter Valid Phone Number",
     });
 
   const resetToken = jwt.sign({ number }, process.env.JWT_SECRET, {
@@ -470,13 +476,88 @@ router.post(
 
 router.get("/me", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user)
+    return res
+      .status(404)
+      .json({ error: "User not found", mssg: "Please Login Again" });
 
   res.json({
     isLogedIn: true,
     user: user,
     isAdmin: user.name === "admin",
   });
+});
+
+router.get("/position", authenticateToken, async (req, res) => {
+  const id = req.user._id;
+  const user = await User.findById(id);
+  console.log("/position ::");
+  if (!user)
+    return res
+      .status(404)
+      .json({ error: "User not found", mssg: "Please Login Again" });
+
+  const levels = [5, 25, 125, 625];
+
+  let newLevel = user.level;
+  let increased = false;
+
+  for (let i = user.level; i < 4; i++) {
+    if (
+      user.children[`level${i + 1}`].filter((c) => c.valid).length >= levels[i]
+    ) {
+      // Do something
+      newLevel = i + 1;
+      user.balance += levels[i] * 500;
+      user.transactions.push({
+        transaction_type: "Gift",
+        amount: levels[i] * 500,
+        is_debit: false,
+      });
+      increased = true;
+    } else {
+      break;
+    }
+  }
+
+  if (increased) {
+    user.level = newLevel;
+    await user.save();
+    console.log("Level Updated: ", user.level);
+    return res.json({ mssg: "Level Updated", user, increased });
+  } else {
+    return res.json({ mssg: "Level Not Updated", increased });
+  }
+
+  // if (user.level == 0) {
+  //   if (user.children.level1.length >= 5) {
+  //   }
+  //   if (user.children.level2.length >= 25) {
+  //   }
+  //   if (user.children.level3.length >= 125) {
+  //   }
+  //   if (user.children.level4.length >= 625) {
+  //   }
+  //   // save user
+  // } else if (user.level == 1) {
+  //   if (user.children.level2.length >= 25) {
+  //   }
+  //   if (user.children.level3.length >= 125) {
+  //   }
+  //   if (user.children.level4.length >= 625) {
+  //   }
+  //   // save user
+  // } else if (user.level == 2) {
+  //   if (user.children.level3.length >= 125) {
+  //   }
+  //   if (user.children.level4.length >= 625) {
+  //   }
+  //   // save user
+  // } else if (user.level == 3) {
+  //   if (user.children.level4.length >= 625) {
+  //   }
+  //   // save user
+  // }
 });
 
 module.exports = router;

@@ -9,12 +9,20 @@ const {
 
 router.post("/pay", authenticateToken, async (req, res) => {
   const { utr } = req.body;
-  const { _id } = req.user;
+  const _id = req.user._id;
 
   console.log(_id, utr);
 
-  if (!_id) return res.status(400).json({ error: "UnAuthorizatiod" });
-  if (!utr) return res.status(400).json({ error: "UTR is Empty" });
+  if (!_id)
+    return res.status(400).json({
+      error: "Unauthorizatiod",
+      mssg: "Please Login to Continue",
+    });
+  if (!utr)
+    return res.status(400).json({
+      error: "UTR is Empty",
+      mssg: "Please Enter UTR Number to Continue",
+    });
   const user = await User.findById(_id);
 
   if (!user) return res.status(404).json({ error: "User not found" });
