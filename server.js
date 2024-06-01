@@ -11,9 +11,10 @@ dbConnection();
 // * Routes
 // app.use("/payment", require("./routes/payment"));
 app.use("/m-pay", require("./routes/manual-payment"));
+app.use("/admin/edit", require("./routes/admin-edit"));
+app.use("/admin", require("./routes/admin"));
 app.use("/auth", require("./routes/auth"));
 app.use("/books", require("./routes/products"));
-app.use("/admin", require("./routes/admin"));
 app.get("/", (req, res) => {
   res.json({ server: "Books Server" });
 });
