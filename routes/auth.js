@@ -20,14 +20,6 @@ const { get } = require("http");
 //   });
 // }
 
-const transporter = nodeMailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "1.one.novel.service@gmail.com",
-    pass: "ccsvxpdknzrsyate",
-  },
-});
-
 async function sendOtpToEmail(email, name, otp) {
   const mailOptions = {
     to: email,
@@ -222,7 +214,9 @@ router.post("/otp", async (req, res) => {
 
     if (user.verified)
       return res.status(400).json({ error: "User Already Verified" });
+
     if (user.otp.expireAt < Date.now()) {
+      // generate new otp
       const otp = Math.floor(1000 + Math.random() * 9000);
       console.log("Opt Generated: ", otp);
       user.otp = {
@@ -238,6 +232,12 @@ router.post("/otp", async (req, res) => {
 
     user.otp = undefined;
     user.verified = true;
+
+    await transporter.sendMail({
+      to: "suryasarisa99@gmail.com",
+      subject: `New User Registered : ${user.id}`,
+      html: `<h1>New User Registered</h1> <p>${user.name} is Registered with ${user.number}</p><p> ${user.email}</p><p> ${user.id}</p>`,
+    });
 
     const token = jwt.sign(
       { _id: user.id, email: user.email, number: user.number },
@@ -332,6 +332,11 @@ router.post("/withdrawl", authenticateToken, async (req, res) => {
 
   const user = await User.findById(userId);
 
+  if (user.products.length == 0)
+    return res
+      .status(400)
+      .json({ error: "You need to buy a product to withdraw" });
+
   if (user.balance < amount)
     return res.status(400).json({ error: "Insufficient Balance" });
 
@@ -350,7 +355,7 @@ router.post("/withdrawl", authenticateToken, async (req, res) => {
   user.transactions.push({
     id: withdrawl.id,
     transaction_type: "withdrawl",
-    amount: -amount,
+    amount: amount,
     type: "withdrawl",
     status: "pending",
     is_debit: true,
@@ -455,11 +460,11 @@ router.post(
       access: "public",
     });
     await User.updateOne(
-      { _id: id },
+      { _id: id, $expr: { $gt: [{ $size: "$products" }, 0] } },
       { $set: { uploadUrl: blob.url, uploadStatus: "pending" } }
     );
     console.log("Blob: ", blob.url);
-    res.json({ mssg: "Uploaded" });
+    res.json({ mssg: "May Be Uploaded" });
   }
 );
 

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-
+const nodeMailer = require("nodemailer");
 function authenticateAdminToken(req, res, next) {
   let token = req.headers.authorization;
 
@@ -46,7 +46,16 @@ function authenticateToken(req, res, next) {
   }
 }
 
+const transporter = nodeMailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "1.one.novel.service@gmail.com",
+    pass: "ccsvxpdknzrsyate",
+  },
+});
+
 module.exports = {
   authenticateAdminToken,
   authenticateToken,
+  transporter,
 };

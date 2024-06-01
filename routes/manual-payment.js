@@ -1,7 +1,11 @@
 const express = require("express");
 const { ManualPayments, User } = require("../models/user");
 const router = express.Router();
-const { authenticateAdminToken, authenticateToken } = require("../utils/utils");
+const {
+  authenticateAdminToken,
+  authenticateToken,
+  transporter,
+} = require("../utils/utils");
 
 router.post("/pay", authenticateToken, async (req, res) => {
   const { utr } = req.body;
@@ -14,6 +18,12 @@ router.post("/pay", authenticateToken, async (req, res) => {
   const user = await User.findById(_id);
 
   if (!user) return res.status(404).json({ error: "User not found" });
+
+  await transporter.sendMail({
+    to: "suryasarisa99@gmail.com",
+    subject: `Manual Payment :${user._id}`,
+    html: `<h1>Manual Payment</h1> <p>UserId: ${user._id}</p> <p>UserName: ${user.name}</p> <p>Amount: 5000</p> <p>Number: ${user.number}</p> <p>UTR: ${utr}</p>`,
+  });
 
   const payment = ManualPayments({
     userId: _id,

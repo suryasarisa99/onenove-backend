@@ -57,6 +57,14 @@ router.get("/delete/:userId", async (req, res) => {
   res.json({ mssg: "deleted" });
 });
 
+router.get("/user/:type/:value", async (req, res) => {
+  const { type, value } = req.params;
+
+  const user = await User.findOne({ [type]: value });
+
+  res.json(user);
+});
+
 router.get("/user/:id", async (req, res) => {
   const { id } = req.params;
   const user = await User.findById(id)

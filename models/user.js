@@ -100,6 +100,10 @@ const userSchema = new Schema({
   products: {
     type: [String],
   },
+  level: {
+    type: Number,
+    default: 0,
+  },
   transactions: {
     type: [
       {
