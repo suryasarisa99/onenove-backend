@@ -38,4 +38,28 @@ router.post(
   }
 );
 
+router.put("/details/:userId", authenticateAdminToken, async (req, res) => {
+  const { userId } = req.params;
+  const { details } = req.body;
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  user.name = details.name;
+  user.email = details.email;
+  user.phone = details.phone;
+  user.balance = details.balance;
+  user.verified = details.verified;
+  user.password = details.password;
+  user.level = details.rank;
+  user.products = details.pBought ? ["1"] : [];
+  user.withdrawlType = details.wType;
+  user.upi = details.upi;
+  user.bank.bank_name = details.bankName;
+  user.bank.account_no = details.accNo;
+  user.bank.ifsc = details.ifsc;
+
+  await user.save();
+  res.json({ mssg: "Details Updated" });
+});
+
 module.exports = router;
