@@ -28,7 +28,7 @@ router.post("/pay", authenticateToken, async (req, res) => {
   if (!user) return res.status(404).json({ error: "User not found" });
 
   await transporter.sendMail({
-    to: "suryasarisa99@gmail.com",
+    to: process.env.ADMIN_EMAIL,
     subject: `Manual Payment :${user._id}`,
     html: `<h1>Manual Payment</h1> <p>UserId: ${user._id}</p> <p>UserName: ${user.name}</p> <p>Amount: 5000</p> <p>Number: ${user.number}</p> <p>UTR: ${utr}</p>`,
   });

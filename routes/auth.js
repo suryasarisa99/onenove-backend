@@ -224,7 +224,7 @@ router.post("/otp", async (req, res) => {
     user.verified = true;
 
     await transporter.sendMail({
-      to: "suryasarisa99@gmail.com",
+      to: process.env.ADMIN_EMAIL,
       subject: `New User Registered : ${user.id}`,
       html: `<h1>New User Registered</h1> <p>${user.name} is Registered with ${user.number}</p><p> ${user.email}</p><p> ${user.id}</p>`,
     });

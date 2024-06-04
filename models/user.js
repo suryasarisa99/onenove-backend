@@ -54,7 +54,7 @@ const userSchema = new Schema({
   },
   balance: {
     type: Number,
-    default: 5000,
+    default: 0,
   },
   forgotMode: {
     type: Boolean,
