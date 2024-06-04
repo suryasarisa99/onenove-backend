@@ -501,6 +501,7 @@ router.get("/position", authenticateToken, async (req, res) => {
 
   let newLevel = user.level;
   let increased = false;
+  const newTransactions = [];
 
   for (let i = user.level; i < 4; i++) {
     if (
@@ -509,11 +510,13 @@ router.get("/position", authenticateToken, async (req, res) => {
       // Do something
       newLevel = i + 1;
       user.balance += levels[i] * 500;
-      user.transactions.push({
+      const t = {
         transaction_type: "Gift",
         amount: levels[i] * 500,
         is_debit: false,
-      });
+      };
+      newTransactions.push({ ...t, forLevel: i + 1 });
+      user.transactions.push(t);
       increased = true;
     } else {
       break;
@@ -524,7 +527,12 @@ router.get("/position", authenticateToken, async (req, res) => {
     user.level = newLevel;
     await user.save();
     console.log("Level Updated: ", user.level);
-    return res.json({ mssg: "Level Updated", user, increased });
+    return res.json({
+      mssg: "Level Updated",
+      user,
+      increased,
+      gifts: newTransactions,
+    });
   } else {
     return res.json({ mssg: "Level Not Updated", increased });
   }
