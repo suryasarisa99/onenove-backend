@@ -5,7 +5,7 @@ const { authenticateAdminToken } = require("../utils/utils");
 
 router.put("/transaction/:userId", authenticateAdminToken, async (req, res) => {
   const { userId } = req.params;
-  const { amount, is_debit, status, type, tid } = req.body;
+  const { amount, is_debit, status, type, tid, date } = req.body;
   console.log(req.body);
   const user = await User.findById(userId);
   if (!user) return res.status(404).json({ error: "User not found" });
@@ -15,8 +15,39 @@ router.put("/transaction/:userId", authenticateAdminToken, async (req, res) => {
   transactionItem.transaction_type = type;
   transactionItem.amount = amount;
   transactionItem.is_debit = is_debit;
+  transactionItem.date = date;
   await user.save();
 });
+
+router.post(
+  "/transaction/:userId",
+  authenticateAdminToken,
+  async (req, res) => {
+    const { userId } = req.params;
+    const { amount, is_debit, status, type, tid, date } = req.body;
+    console.log(req.body);
+    try {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      const transactionItem = user.transactions.create({
+        status,
+        transaction_type: type,
+        amount,
+        is_debit,
+        date,
+      });
+      user.transactions.push(transactionItem);
+
+      await user.save();
+
+      return res.json({ mssg: "Transaction Added", id: transactionItem._id });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({ error: "An error occurred", err });
+    }
+  }
+);
 
 router.post(
   "/transactions/:userId",
@@ -29,6 +60,7 @@ router.post(
       amount: t.amount,
       status: t.status,
       is_debit: t.is_debit,
+      date: t.date,
     }));
     await User.updateOne(
       { _id: userId },
