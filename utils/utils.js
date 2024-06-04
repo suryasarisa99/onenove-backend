@@ -3,8 +3,11 @@ const nodeMailer = require("nodemailer");
 function authenticateAdminToken(req, res, next) {
   let token = req.headers.authorization;
 
-  console.log("token: ", token?.substring(0, 15));
-  token = token.split(" ")[1];
+  try {
+    token = token.split(" ")[1];
+  } catch {
+    return res.status(401).json({ error: "Unauthorized", message: "No Token" });
+  }
   if (!token)
     return res.status(401).json({ error: "Unauthorized", message: "No Token" });
   try {
