@@ -42,12 +42,13 @@ router.post("/referal/:userId", authenticateAdminToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const { r, level } = req.body;
-    const key = "level" + level;
+    const key = "children.level" + level;
+    console.log(r, level);
 
     if (!userId) return res.status(400).json({ mssg: "UserId is Required" });
 
     try {
-      await User.updateOne(
+      const result = await User.updateOne(
         { _id: userId },
         {
           $push: {
@@ -55,6 +56,8 @@ router.post("/referal/:userId", authenticateAdminToken, async (req, res) => {
           },
         }
       );
+      if (result.nModified === 0)
+        return res.status(404).json({ mssg: "User not found" });
     } catch {
       return res.status(404).json({ mssg: "User not found" });
     }
