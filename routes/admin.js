@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { User, ManualPayments, Withdrawl } = require("../models/user");
+const { User, ManualPayments, Withdrawl, Uploads } = require("../models/user");
 const { authenticateAdminToken } = require("../utils/utils");
 const jwt = require("jsonwebtoken");
 router.get("/reset", async (req, res) => {
@@ -219,11 +219,53 @@ router.get("/confirm-m-pay/:id", authenticateAdminToken, async (req, res) => {
   }
 });
 
+router.post(
+  "/confirm-upload/:userId",
+  authenticateAdminToken,
+  async (req, res) => {
+    const { userId } = req.params;
+    const { id, status, amount } = req.body;
+    console.log(req.body);
+    if (!userId) return res.status(400).json({ error: "User Id is required" });
+    if (!id || !status || amount === undefined)
+      return res.status(400).json({ error: "Invalid Data" });
+
+    try {
+      const p1 = Uploads.updateOne({ _id: id }, { status });
+
+      // update user uploads
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const lastUploadIndex = user.uploadedBooks.length - 1;
+      user.uploadedBooks[lastUploadIndex].status = status;
+      if (status == "accepted") {
+        user.balance += amount;
+        user.transactions.push({
+          transaction_type: "Writers Benfit Bonus",
+          amount,
+          for: id,
+          is_debit: false,
+        });
+      }
+
+      const p2 = user.save();
+
+      await Promise.all([p1, p2]);
+
+      res.json({ mssg: "Updated", success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
 router.get("/", authenticateAdminToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  const payments = await ManualPayments.find({ status: "pending" });
-  const withdrawls = await Withdrawl.find({ status: "pending" });
-  res.json({ user, payments, withdrawls });
+  const p = ManualPayments.find({ status: "pending" });
+  const w = Withdrawl.find({ status: "pending" });
+  const u = Uploads.find({ status: "pending" });
+  const [payments, withdrawls, uploads] = await Promise.all([p, w, u]);
+  res.json({ payments, withdrawls, uploads });
 });
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { User, Numbers, Withdrawl } = require("../models/user");
+const { User, Numbers, Withdrawl, Uploads } = require("../models/user");
 const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
 const { put } = require("@vercel/blob");
@@ -231,7 +231,8 @@ router.post("/otp", async (req, res) => {
 
     const token = jwt.sign(
       { _id: user.id, email: user.email, number: user.number },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
     );
 
     await user.save();
@@ -301,7 +302,10 @@ router.post("/login", async (req, res) => {
 
   const token = jwt.sign(
     { _id: user.id, email: user.email, number: user.number },
-    process.env.JWT_SECRET
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1d",
+    }
   );
   res.json({
     message: "Credentials matched",
@@ -317,9 +321,9 @@ router.post("/withdrawl", authenticateToken, async (req, res) => {
   const userId = req.user._id;
 
   if (!amount) return res.status(400).json({ error: "Amount is required" });
-  if (amount < 100)
+  if (amount < 1000)
     return res.status(400).json({
-      error: "Minimum amount is 100",
+      error: "Minimum amount is 1000",
       mssg: "Please Enter Amount Greater than 100 And Try Again",
     });
 
@@ -474,6 +478,45 @@ router.post(
   }
 );
 
+router.post("/upload-url", authenticateToken, async (req, res) => {
+  const id = req.user._id;
+  const { url } = req.body;
+  try {
+    const user = await User.findById(id);
+    if (!user)
+      return res
+        .status(404)
+        .json({ error: "User not found", mssg: "Please Login Again" });
+
+    if (
+      user.uploadedBooks.length > 0 &&
+      user.uploadedBooks[user.uploadedBooks.length - 1].status === "pending"
+    )
+      return res.status(400).json({
+        error: "Wait Until Approval",
+        mssg: "Previous Submission is Still Pending, Wait for its been Reviewed And then Upload Another",
+      });
+
+    const u = Uploads.create({
+      url,
+      userId: id,
+      userName: user.name,
+      status: "pending",
+    });
+    user.uploadedBooks.push({
+      _id: u._id,
+      url,
+      status: "pending",
+    });
+    await user.save();
+
+    res.json({ mssg: "Uploaded", success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/me", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user)
@@ -514,6 +557,7 @@ router.get("/position", authenticateToken, async (req, res) => {
         transaction_type: "Gift",
         amount: levels[i] * 500,
         is_debit: false,
+        for: i + 1,
       };
       newTransactions.push({ ...t, forLevel: i + 1 });
       user.transactions.push(t);

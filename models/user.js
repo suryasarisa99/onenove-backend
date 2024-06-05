@@ -104,17 +104,33 @@ const userSchema = new Schema({
     type: Number,
     default: 0,
   },
+  uploadedBooks: {
+    type: [
+      {
+        url: String,
+        status: String,
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+  },
   transactions: {
     type: [
       {
-        transaction_id: String,
-        m_transaction_id: String,
+        // transaction_id: String,
+        // m_transaction_id: String,
+
+        // for referal bonus:
+        fromUser: { type: String, ref: "User" },
+        referal_level: Number,
+        onProduct: String,
+
         status: String,
         transaction_type: String,
-        onProduct: String,
-        fromUser: { type: String, ref: "User" },
+        for: String,
         amount: Number,
-        referal_level: Number,
         date: {
           type: Date,
           default: Date.now,
@@ -122,6 +138,29 @@ const userSchema = new Schema({
         is_debit: Boolean,
       },
     ],
+  },
+});
+
+// for: product_id of that we buy || user_id of that we refer (referal bonus) || id of accpted book || user level of getting gift
+//  id of accepted manual payment
+
+const UploadsSchema = new Schema({
+  userId: {
+    type: String,
+    ref: "User",
+  },
+  userName: String,
+  url: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    default: "pending",
+  },
+  date: {
+    type: Date,
+    default: Date.now,
   },
 });
 
@@ -183,4 +222,5 @@ module.exports = {
   User: model("User", userSchema),
   Withdrawl: model("Withdrawl", WithdrawlSchema),
   ManualPayments: model("ManualPayments", ManualPaymentsSchema),
+  Uploads: model("Uploads", UploadsSchema),
 };
