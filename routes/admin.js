@@ -2,50 +2,24 @@ const router = require("express").Router();
 const { User, ManualPayments, Withdrawl, Uploads } = require("../models/user");
 const { authenticateAdminToken } = require("../utils/utils");
 const jwt = require("jsonwebtoken");
-router.get("/reset", async (req, res) => {
-  await User.deleteMany();
-  await ManualPayments.deleteMany();
-  await Withdrawl.deleteMany();
-  const user = new User({
-    _id: "admin",
-    name: "admin",
-    number: "1234567890",
-    email: "amdin@gmail.com",
-    password: "admin",
-    verified: true,
-  });
-  await user.save();
 
-  res.json({ mssg: "reseted" });
-});
-router.get("/test", async (req, res) => {
-  // const users = await User.find({}).populate([
-  //   { path: 'transactions.fromUser', select: 'name email' },
-  //   { path: 'directChild', select: 'name number email balance' }
-  // ]);
-  try {
-    const users = await User.find({})
-      .populate("transactions.fromUser", "name email")
-      .populate("directChild", "name number email balance");
-    res.json(users);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
-});
+// router.get("/reset", async (req, res) => {
+//   await User.deleteMany();
+//   await ManualPayments.deleteMany();
+//   await Withdrawl.deleteMany();
+//   const user = new User({
+//     _id: "admin",
+//     name: "admin",
+//     number: "1234567890",
+//     email: "amdin@gmail.com",
+//     password: "",
+//     verified: true,
+//   });
+//   await user.save();
+//   res.json({ mssg: "reseted" });
+// });
 
-router.get("/users", async (req, res) => {
-  const users = await User.find();
-  const payments = await ManualPayments.find({ status: "pending" });
-  const withdrawls = await Withdrawl.find();
-  res.json({
-    users,
-    // payments,
-    // withdrawls,
-  });
-});
-
-router.get("/delete/:userId", async (req, res) => {
+router.get("/delete/:userId", authenticateAdminToken, async (req, res) => {
   const { userId } = req.params;
   console.log(userId);
   if (!userId) return res.status(400).json({ error: "User Id is required" });
@@ -57,20 +31,9 @@ router.get("/delete/:userId", async (req, res) => {
   res.json({ mssg: "deleted" });
 });
 
-router.get("/user/:type/:value", async (req, res) => {
+router.get("/user/:type/:value", authenticateAdminToken, async (req, res) => {
   const { type, value } = req.params;
-
   const user = await User.findOne({ [type]: value });
-
-  res.json(user);
-});
-
-router.get("/user/:id", async (req, res) => {
-  const { id } = req.params;
-  const user = await User.findById(id)
-    .populate("transactions.fromUser", "name email")
-    .populate("directChild", "name number email balance");
-
   res.json(user);
 });
 
@@ -98,8 +61,12 @@ router.post("/login", async (req, res) => {
     { _id: user.id, email: user.email, number: user.number },
     process.env.JWT_SECRET
   );
-  const payments = await ManualPayments.find({ status: "pending" });
-  res.json({ user, payments, token });
+
+  const p = ManualPayments.find({ status: "pending" });
+  const w = Withdrawl.find({ status: "pending" });
+  const u = Uploads.find({ status: "pending" });
+  const [payments, withdrawls, uploads] = await Promise.all([p, w, u]);
+  res.json({ payments, withdrawls, uploads, payments, token });
 });
 
 router.post(
