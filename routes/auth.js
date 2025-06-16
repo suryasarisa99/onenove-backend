@@ -445,7 +445,7 @@ router.get("/forgot-password/:number", async (req, res) => {
   });
 
   // const resetLink = `http://192.168.0.169:4444/reset-password/${resetToken}`;
-  const resetLink = `https://one-novell.vercel.app/reset-password/${resetToken}`;
+  const resetLink = `${process.env.FRONTNED_URL}/reset-password/${resetToken}`;
   user.forgotMode = true;
   await sendResetLink(user.email, user.name, resetLink);
   await user.save();

@@ -3,12 +3,9 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
 const origins = [
-  "http://192.168.0.169:4444",
-  "http://192.168.1.8:4444",
   "https://one-novel.vercel.app",
-  "https://one-novell.vercel.app",
   "https://one-novel-admin.vercel.app",
-  "https://www.onenovel.in",
+  process.env.FRONTEND_URL,
 ];
 
 const corsOptions = {
